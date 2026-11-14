@@ -16457,8 +16457,14 @@ ${text2}`)) {
     restore: '<rect x="2" y="4" width="6" height="6" rx="1" /><path d="M4.5 4V3a1 1 0 0 1 1-1H9a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H8" />',
     close: '<path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />'
   };
-  function icon2(name) {
-    return `<svg viewBox="0 0 12 12" aria-hidden="true">${ICONS2[name]}</svg>`;
+  var GLYPHS = {
+    minimize: "",
+    maximize: "",
+    restore: "",
+    close: ""
+  };
+  function icon2(name, controls) {
+    return controls === "windows" ? `<span aria-hidden="true">${GLYPHS[name]}</span>` : `<svg viewBox="0 0 12 12" aria-hidden="true">${ICONS2[name]}</svg>`;
   }
   function buildControls() {
     const box = document.createElement("div");
@@ -16517,7 +16523,7 @@ ${text2}`)) {
     const kind = next.inset > 0 ? next.controls ?? "macos" : null;
     if (kind) root.setAttribute(KIND_ATTR2, kind);
     else root.removeAttribute(KIND_ATTR2);
-    const drawn = next.controls && next.inset > 0;
+    const drawn = next.inset > 0 ? next.controls : null;
     let controls = document.getElementById(CONTROLS_ID);
     let strip = document.getElementById(STRIP_ID);
     if (!drawn) {
@@ -16531,15 +16537,15 @@ ${text2}`)) {
     const maximize = controls.querySelector('[data-control="maximize"]');
     const minimize = controls.querySelector('[data-control="minimize"]');
     const close = controls.querySelector('[data-control="close"]');
-    if (minimize && !minimize.innerHTML) minimize.innerHTML = icon2("minimize");
-    if (close && !close.innerHTML) close.innerHTML = icon2("close");
+    if (minimize && !minimize.innerHTML) minimize.innerHTML = icon2("minimize", drawn);
+    if (close && !close.innerHTML) close.innerHTML = icon2("close", drawn);
     if (minimize) minimize.hidden = !next.minimize;
     if (maximize) maximize.hidden = !next.maximize;
     if (maximize) {
       const name = next.maximized ? "restore" : "maximize";
       if (maximize.dataset.icon !== name) {
         maximize.dataset.icon = name;
-        maximize.innerHTML = icon2(name);
+        maximize.innerHTML = icon2(name, drawn);
         const label = next.maximized ? t("page.window.restore") : t("page.window.maximize");
         maximize.setAttribute("aria-label", label);
         maximize.title = label;

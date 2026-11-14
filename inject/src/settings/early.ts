@@ -39,8 +39,11 @@ if (/Mac/.test(navigator.platform || "")) document.documentElement.classList.add
       close.type = "button";
       close.title = t("settings.window.close");
       close.setAttribute("aria-label", close.title);
+      // Windows' own close glyph (see messenger/features/title-bar.ts).
       close.innerHTML =
-        '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>';
+        state.controls === "windows"
+          ? '<span aria-hidden="true">\uE8BB</span>'
+          : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>';
       close.addEventListener("click", () => control("close"));
       box.append(close);
     }
