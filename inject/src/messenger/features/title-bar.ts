@@ -38,6 +38,7 @@ function control(action: Parameters<typeof chatpaneWindowControl>[0]) {
   );
 }
 
+// Linux: drawn in the style of GNOME's symbolic icons.
 const ICONS = {
   minimize: '<path d="M2 6h8" />',
   maximize: '<rect x="2" y="2" width="8" height="8" rx="1" />',
@@ -46,8 +47,19 @@ const ICONS = {
   close: '<path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />',
 };
 
-function icon(name: keyof typeof ICONS) {
-  return `<svg viewBox="0 0 12 12" aria-hidden="true">${ICONS[name]}</svg>`;
+// Windows: the caption glyphs Windows draws its own buttons with, from Segoe
+// Fluent Icons (Segoe MDL2 Assets on Windows 10), so they match at any scale.
+const GLYPHS: Record<keyof typeof ICONS, string> = {
+  minimize: "\uE921",
+  maximize: "\uE922",
+  restore: "\uE923",
+  close: "\uE8BB",
+};
+
+function icon(name: keyof typeof ICONS, controls: Controls) {
+  return controls === "windows"
+    ? `<span aria-hidden="true">${GLYPHS[name]}</span>`
+    : `<svg viewBox="0 0 12 12" aria-hidden="true">${ICONS[name]}</svg>`;
 }
 
 function buildControls(): HTMLElement {
@@ -115,7 +127,7 @@ function apply(next: TitleBarState) {
   if (kind) root.setAttribute(KIND_ATTR, kind);
   else root.removeAttribute(KIND_ATTR);
 
-  const drawn = next.controls && next.inset > 0;
+  const drawn = next.inset > 0 ? next.controls : null;
   let controls = document.getElementById(CONTROLS_ID);
   let strip = document.getElementById(STRIP_ID);
   if (!drawn) {
@@ -129,15 +141,15 @@ function apply(next: TitleBarState) {
   const maximize = controls.querySelector<HTMLButtonElement>('[data-control="maximize"]');
   const minimize = controls.querySelector<HTMLButtonElement>('[data-control="minimize"]');
   const close = controls.querySelector<HTMLButtonElement>('[data-control="close"]');
-  if (minimize && !minimize.innerHTML) minimize.innerHTML = icon("minimize");
-  if (close && !close.innerHTML) close.innerHTML = icon("close");
+  if (minimize && !minimize.innerHTML) minimize.innerHTML = icon("minimize", drawn);
+  if (close && !close.innerHTML) close.innerHTML = icon("close", drawn);
   if (minimize) minimize.hidden = !next.minimize;
   if (maximize) maximize.hidden = !next.maximize;
   if (maximize) {
     const name = next.maximized ? "restore" : "maximize";
     if (maximize.dataset.icon !== name) {
       maximize.dataset.icon = name;
-      maximize.innerHTML = icon(name);
+      maximize.innerHTML = icon(name, drawn);
       const label = next.maximized ? t("page.window.restore") : t("page.window.maximize");
       maximize.setAttribute("aria-label", label);
       maximize.title = label;

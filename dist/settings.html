@@ -16,12 +16,12 @@
       #title-strip { position: fixed; top: 0; left: 0; right: 0; height: var(--inset); z-index: 2; }
       #window-controls { position: fixed; top: 0; right: 0; height: var(--inset); display: flex; align-items: center; z-index: 3; color: inherit; }
       #window-controls button { appearance: none; border: 0; border-radius: 0; margin: 0; padding: 0; min-width: 0; min-height: 0; box-shadow: none; font: inherit; display: grid; place-items: center; color: inherit; background: transparent; cursor: default; }
-      #window-controls svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; stroke-linecap: round; }
+      #window-controls svg { width: 9px; height: 9px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+      #window-controls span { font: normal 10px/1 "Segoe Fluent Icons", "Segoe MDL2 Assets"; }
       html[data-controls="windows"] #window-controls button { width: 46px; height: 100%; }
       html[data-controls="windows"] #window-controls button:hover { background: #c42b1c; color: #fff; }
       html[data-controls="linux"] #window-controls { padding: 0 8px; }
       html[data-controls="linux"] #window-controls button { width: 24px; height: 24px; border-radius: 50%; background: rgba(127, 127, 127, .18); }
-      html[data-controls="linux"] #window-controls svg { width: 9px; height: 9px; stroke-width: 1.4; }
       * { box-sizing: border-box; }
       html, body { margin: 0; height: 100%; }
       body {

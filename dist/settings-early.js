@@ -69,7 +69,7 @@
         close.type = "button";
         close.title = settingsText("settings.window.close");
         close.setAttribute("aria-label", close.title);
-        close.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>';
+        close.innerHTML = state.controls === "windows" ? '<span aria-hidden="true"></span>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" /></svg>';
         close.addEventListener("click", () => control("close"));
         box.append(close);
       }
