@@ -961,16 +961,19 @@
 
   /* ---------- Windows 11 (html[data-os="windows"]) ----------
      3.0 on Windows: no title bar. Chatpane draws minimize, maximize and close
-     at the top right over a 32px strip above the conversation; the chat list
-     starts at the top (messenger.css, windows title bar). */
+     at the top right over a 32px strip above the conversation, which starts
+     right below it; the chat list starts at the top (messenger.css, windows
+     title bar). The caption glyphs are 10px, like Windows' own: the 12-unit
+     icons drawn at 15px put their 8-unit paths at 10px, with a 1px stroke. */
   .win-caption { display: none; position: absolute; top: 0; inset-inline-end: 0; z-index: 2; height: 32px; color: var(--w-text); }
   .win-caption span { width: 46px; height: 32px; display: grid; place-items: center; }
   .win-caption svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
   html[data-os="windows"] .win { border-radius: 8px; }
   html[data-os="windows"] .win-bar { display: none; }
   html[data-os="windows"] .win-caption { display: flex; }
+  html[data-os="windows"] .win-caption svg { width: 15px; height: 15px; stroke-width: .8; }
   html[data-os="windows"] .win-body .side { padding-top: 0; }
-  html[data-os="windows"] .chatpane { margin-top: 48px; }
+  html[data-os="windows"] .chatpane { margin-top: 32px; }
   /* Windows 11 notifications, measured from a real Chatpane toast at 100%
      scale: a 364px card with the app icon, "Chatpane", ··· and ✕ in the
      header, a 60px round photo, then the reply box and the action buttons.
@@ -1025,14 +1028,15 @@
   /* ---------- Linux (html[data-os="linux"]) ----------
      3.0 on floating Linux desktops (KDE Plasma, GNOME): no title bar, Chatpane
      draws round minimize, maximize and close buttons at the top right over a
-     32px strip above the conversation (messenger.css, linux title bar). */
+     32px strip above the conversation, which starts right below it
+     (messenger.css, linux title bar). */
   html[data-os="linux"] .win { border-radius: 8px; }
   html[data-os="linux"] .win-bar { display: none; }
   html[data-os="linux"] .win-caption { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
   html[data-os="linux"] .win-caption span { width: 24px; height: 24px; border-radius: 50%; background: rgba(127, 127, 127, .18); }
   html[data-os="linux"] .win-caption svg { width: 9px; height: 9px; stroke-width: 1.4; }
   html[data-os="linux"] .win-body .side { padding-top: 0; }
-  html[data-os="linux"] .chatpane { margin-top: 48px; }
+  html[data-os="linux"] .chatpane { margin-top: 32px; }
   html[data-os="linux"] .toast-stack { top: 40px; }
   /* KDE Plasma notifications: Breeze card, app name and close button on top,
      the sender's picture on the right, actions as buttons underneath */

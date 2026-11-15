@@ -34,10 +34,10 @@ and IEND chunks: no text, account, location, or EXIF metadata.
 
 | Image | SHA-256 |
 | --- | --- |
-| `chatpane-linux-en-light.png` | `fa6148a6c3a078b58475a2ac2a1edba529e93a58d11fc0fab574b3dd8aad0e7a` |
-| `chatpane-linux-en-dark.png` | `672e717691b4f49e5fd6c03185b5b87f15b380643796deee89d606952a877ba2` |
-| `chatpane-windows-en-light.png` | `153d5907a5b80bf29e6faa4fa9e94cc663546276a024c2dd9b88b161bb038fad` |
-| `chatpane-windows-en-dark.png` | `d913fe701daa14832571ca0e24e139b1e8a30c28f520c48439f323238a1df566` |
+| `chatpane-linux-en-light.png` | `5ee7aa725f768048d7b729925c6ce36b30331b37fe419584f71f3c39c68c5cfc` |
+| `chatpane-linux-en-dark.png` | `cf777bc3d32d0a5cf1b4cbb90317159d7ff9d1bde5384f16876ccf4954a385ec` |
+| `chatpane-windows-en-light.png` | `bd967220aaaf67f43684ce553ef01f34cb30b120c585267e565d2492c7a9006e` |
+| `chatpane-windows-en-dark.png` | `27be16d1fcbd106ed12b9170a73d1055fdc33983d17db26b783600a683372c3f` |
 
 The AppStream URLs point to the Linux files on https://chatpane.app/screenshots/.
 Replacing any image requires a new privacy inspection.
