@@ -1383,9 +1383,9 @@
     }
     for (const media of region.querySelectorAll('img, video, [role="progressbar"]')) {
       if (!isShown(media)) continue;
-      const control2 = media.closest('button, [role="button"]');
-      const bounds = control2?.getBoundingClientRect();
-      if (media.tagName === "IMG" && control2 && bounds && bounds.width <= 48 && bounds.height <= 48 && !control2.closest('[contenteditable="true"]'))
+      const control = media.closest('button, [role="button"]');
+      const bounds = control?.getBoundingClientRect();
+      if (media.tagName === "IMG" && control && bounds && bounds.width <= 48 && bounds.height <= 48 && !control.closest('[contenteditable="true"]'))
         continue;
       return true;
     }
@@ -10131,8 +10131,8 @@ ${button.innerHTML}`)
         const target = event.target instanceof Element ? event.target : null;
         const message = target && messageFor(target);
         if (!target || !message) return;
-        const control2 = target.closest(CONTROL);
-        if (control2 && message.contains(control2)) return;
+        const control = target.closest(CONTROL);
+        if (control && message.contains(control)) return;
         const selection = getSelection();
         if (selection && !selection.isCollapsed && selection.rangeCount > 0 && selection.getRangeAt(0).intersectsNode(message))
           return;
@@ -15718,6 +15718,152 @@ ${text2}`)) {
     };
   }
 
+  // inject/src/messenger/features/title-bar.ts
+  var INSET_VAR = "--chatpane-title-bar-inset";
+  var KIND_ATTR2 = "data-chatpane-title-bar";
+  var STRIP_ID = "chatpane-title-strip";
+  var CONTROLS_ID = "chatpane-window-controls";
+  var state2 = null;
+  function windowControl(action2) {
+    chatpaneWindowControl(action2)?.catch?.(
+      () => diag("title-bar.control", "chatpane:window-control emit failed")
+    );
+  }
+  var ICONS2 = {
+    minimize: '<path d="M2 6h8" />',
+    maximize: '<rect x="2" y="2" width="8" height="8" rx="1" />',
+    restore: '<rect x="2" y="4" width="6" height="6" rx="1" /><path d="M4.5 4V3a1 1 0 0 1 1-1H9a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H8" />',
+    close: '<path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />'
+  };
+  var GLYPHS = {
+    minimize: "",
+    maximize: "",
+    restore: "",
+    close: ""
+  };
+  function icon2(name, controls) {
+    return controls === "windows" ? `<span aria-hidden="true">${GLYPHS[name]}</span>` : `<svg viewBox="0 0 12 12" aria-hidden="true">${ICONS2[name]}</svg>`;
+  }
+  function buildControls() {
+    const box = document.createElement("div");
+    box.id = CONTROLS_ID;
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", t("page.window.controls"));
+    const button = (name, label, action2) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.control = name;
+      b.setAttribute("aria-label", label);
+      b.title = label;
+      b.addEventListener("click", () => windowControl(action2));
+      return b;
+    };
+    box.append(
+      button("minimize", t("page.window.minimize"), "minimize"),
+      button("maximize", t("page.window.maximize"), "toggle-maximize"),
+      button("close", t("page.window.close"), "close")
+    );
+    return box;
+  }
+  function buildStrip() {
+    const strip = document.createElement("div");
+    strip.id = STRIP_ID;
+    strip.setAttribute("aria-hidden", "true");
+    strip.addEventListener("mousedown", (event) => {
+      if (event.button !== 0 || !state2?.controls) return;
+      event.preventDefault();
+      windowControl(event.detail === 2 && state2.maximize ? "toggle-maximize" : "drag");
+    });
+    return strip;
+  }
+  var stripObserver = null;
+  var observedMain = null;
+  function placeStrip() {
+    const strip = document.getElementById(STRIP_ID);
+    if (!strip) return;
+    const main2 = document.querySelector('[role="main"]');
+    const left = main2 ? Math.max(0, Math.round(main2.getBoundingClientRect().left)) : 0;
+    strip.style.left = `${left}px`;
+    if (main2 !== observedMain) {
+      stripObserver?.disconnect();
+      observedMain = main2;
+      if (main2) {
+        stripObserver ?? (stripObserver = new ResizeObserver(placeStrip));
+        stripObserver.observe(main2);
+      }
+    }
+  }
+  function apply(next) {
+    state2 = next;
+    const root = document.documentElement;
+    if (!root) return;
+    root.style.setProperty(INSET_VAR, `${next.inset}px`);
+    const kind = next.inset > 0 ? next.controls ?? "macos" : null;
+    if (kind) root.setAttribute(KIND_ATTR2, kind);
+    else root.removeAttribute(KIND_ATTR2);
+    const drawn = next.inset > 0 ? next.controls : null;
+    let controls = document.getElementById(CONTROLS_ID);
+    let strip = document.getElementById(STRIP_ID);
+    if (!drawn) {
+      controls?.remove();
+      strip?.remove();
+      return;
+    }
+    if (!controls) controls = buildControls();
+    if (!strip) strip = buildStrip();
+    if (!strip.isConnected || !controls.isConnected) root.append(strip, controls);
+    const maximize = controls.querySelector('[data-control="maximize"]');
+    const minimize = controls.querySelector('[data-control="minimize"]');
+    const close = controls.querySelector('[data-control="close"]');
+    if (minimize && !minimize.innerHTML) minimize.innerHTML = icon2("minimize", drawn);
+    if (close && !close.innerHTML) close.innerHTML = icon2("close", drawn);
+    if (minimize) minimize.hidden = !next.minimize;
+    if (maximize) maximize.hidden = !next.maximize;
+    if (maximize) {
+      const name = next.maximized ? "restore" : "maximize";
+      if (maximize.dataset.icon !== name) {
+        maximize.dataset.icon = name;
+        maximize.innerHTML = icon2(name, drawn);
+        const label = next.maximized ? t("page.window.restore") : t("page.window.maximize");
+        maximize.setAttribute("aria-label", label);
+        maximize.title = label;
+      }
+    }
+    placeStrip();
+  }
+  function windowControlsInset() {
+    return state2?.controls && state2.inset > 0 ? state2.inset : 0;
+  }
+  function initTitleBar() {
+    const initial = window.__CHATPANE_TITLE_BAR__;
+    if (!initial) return;
+    window.__chatpaneTitleBar = (next) => apply(next);
+    const root = document.documentElement;
+    if (root) {
+      root.style.setProperty(INSET_VAR, `${initial.inset}px`);
+      if (initial.inset > 0) root.setAttribute(KIND_ATTR2, initial.controls ?? "macos");
+    }
+    const start = () => apply(state2 ?? initial);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start, { once: true });
+    } else start();
+    window.addEventListener("resize", placeStrip, { passive: true });
+    setInterval(() => {
+      if (document.hidden || !state2?.controls || state2.inset <= 0) return;
+      if (!document.getElementById(STRIP_ID)?.isConnected) apply(state2);
+      else if (document.querySelector('[role="main"]') !== observedMain) placeStrip();
+    }, 1e3);
+  }
+  var viewerReported = null;
+  function reportMediaViewer(open) {
+    if (!/Mac/.test(navigator.platform) || !window.__CHATPANE_TITLE_BAR__) return;
+    if (open === viewerReported) return;
+    viewerReported = open;
+    chatpaneMediaViewer(open)?.catch?.(
+      () => diag("title-bar.viewer", "chatpane:media-viewer emit failed")
+    );
+  }
+
   // inject/src/messenger/lib/zoom.ts
   var clampZoom = (p) => Math.min(200, Math.max(30, Math.round(p) || 100));
 
@@ -15830,6 +15976,9 @@ ${text2}`)) {
         } else if (e.key === "F2") {
           e.preventDefault();
           window.__chatpaneCheckUpdates?.();
+        } else if (e.key === "F11" && !isMac3) {
+          e.preventDefault();
+          if (!e.repeat) windowControl("toggle-fullscreen");
         } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
           const target = chatRows()[Number(e.key) - 1];
           if (target) {
@@ -16440,152 +16589,6 @@ ${text2}`)) {
     }
   }
 
-  // inject/src/messenger/features/title-bar.ts
-  var INSET_VAR = "--chatpane-title-bar-inset";
-  var KIND_ATTR2 = "data-chatpane-title-bar";
-  var STRIP_ID = "chatpane-title-strip";
-  var CONTROLS_ID = "chatpane-window-controls";
-  var state2 = null;
-  function control(action2) {
-    chatpaneWindowControl(action2)?.catch?.(
-      () => diag("title-bar.control", "chatpane:window-control emit failed")
-    );
-  }
-  var ICONS2 = {
-    minimize: '<path d="M2 6h8" />',
-    maximize: '<rect x="2" y="2" width="8" height="8" rx="1" />',
-    restore: '<rect x="2" y="4" width="6" height="6" rx="1" /><path d="M4.5 4V3a1 1 0 0 1 1-1H9a1 1 0 0 1 1 1v3.5a1 1 0 0 1-1 1H8" />',
-    close: '<path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />'
-  };
-  var GLYPHS = {
-    minimize: "",
-    maximize: "",
-    restore: "",
-    close: ""
-  };
-  function icon2(name, controls) {
-    return controls === "windows" ? `<span aria-hidden="true">${GLYPHS[name]}</span>` : `<svg viewBox="0 0 12 12" aria-hidden="true">${ICONS2[name]}</svg>`;
-  }
-  function buildControls() {
-    const box = document.createElement("div");
-    box.id = CONTROLS_ID;
-    box.setAttribute("role", "group");
-    box.setAttribute("aria-label", t("page.window.controls"));
-    const button = (name, label, action2) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.dataset.control = name;
-      b.setAttribute("aria-label", label);
-      b.title = label;
-      b.addEventListener("click", () => control(action2));
-      return b;
-    };
-    box.append(
-      button("minimize", t("page.window.minimize"), "minimize"),
-      button("maximize", t("page.window.maximize"), "toggle-maximize"),
-      button("close", t("page.window.close"), "close")
-    );
-    return box;
-  }
-  function buildStrip() {
-    const strip = document.createElement("div");
-    strip.id = STRIP_ID;
-    strip.setAttribute("aria-hidden", "true");
-    strip.addEventListener("mousedown", (event) => {
-      if (event.button !== 0 || !state2?.controls) return;
-      event.preventDefault();
-      control(event.detail === 2 && state2.maximize ? "toggle-maximize" : "drag");
-    });
-    return strip;
-  }
-  var stripObserver = null;
-  var observedMain = null;
-  function placeStrip() {
-    const strip = document.getElementById(STRIP_ID);
-    if (!strip) return;
-    const main2 = document.querySelector('[role="main"]');
-    const left = main2 ? Math.max(0, Math.round(main2.getBoundingClientRect().left)) : 0;
-    strip.style.left = `${left}px`;
-    if (main2 !== observedMain) {
-      stripObserver?.disconnect();
-      observedMain = main2;
-      if (main2) {
-        stripObserver ?? (stripObserver = new ResizeObserver(placeStrip));
-        stripObserver.observe(main2);
-      }
-    }
-  }
-  function apply(next) {
-    state2 = next;
-    const root = document.documentElement;
-    if (!root) return;
-    root.style.setProperty(INSET_VAR, `${next.inset}px`);
-    const kind = next.inset > 0 ? next.controls ?? "macos" : null;
-    if (kind) root.setAttribute(KIND_ATTR2, kind);
-    else root.removeAttribute(KIND_ATTR2);
-    const drawn = next.inset > 0 ? next.controls : null;
-    let controls = document.getElementById(CONTROLS_ID);
-    let strip = document.getElementById(STRIP_ID);
-    if (!drawn) {
-      controls?.remove();
-      strip?.remove();
-      return;
-    }
-    if (!controls) controls = buildControls();
-    if (!strip) strip = buildStrip();
-    if (!strip.isConnected || !controls.isConnected) root.append(strip, controls);
-    const maximize = controls.querySelector('[data-control="maximize"]');
-    const minimize = controls.querySelector('[data-control="minimize"]');
-    const close = controls.querySelector('[data-control="close"]');
-    if (minimize && !minimize.innerHTML) minimize.innerHTML = icon2("minimize", drawn);
-    if (close && !close.innerHTML) close.innerHTML = icon2("close", drawn);
-    if (minimize) minimize.hidden = !next.minimize;
-    if (maximize) maximize.hidden = !next.maximize;
-    if (maximize) {
-      const name = next.maximized ? "restore" : "maximize";
-      if (maximize.dataset.icon !== name) {
-        maximize.dataset.icon = name;
-        maximize.innerHTML = icon2(name, drawn);
-        const label = next.maximized ? t("page.window.restore") : t("page.window.maximize");
-        maximize.setAttribute("aria-label", label);
-        maximize.title = label;
-      }
-    }
-    placeStrip();
-  }
-  function windowControlsInset() {
-    return state2?.controls && state2.inset > 0 ? state2.inset : 0;
-  }
-  function initTitleBar() {
-    const initial = window.__CHATPANE_TITLE_BAR__;
-    if (!initial) return;
-    window.__chatpaneTitleBar = (next) => apply(next);
-    const root = document.documentElement;
-    if (root) {
-      root.style.setProperty(INSET_VAR, `${initial.inset}px`);
-      if (initial.inset > 0) root.setAttribute(KIND_ATTR2, initial.controls ?? "macos");
-    }
-    const start = () => apply(state2 ?? initial);
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", start, { once: true });
-    } else start();
-    window.addEventListener("resize", placeStrip, { passive: true });
-    setInterval(() => {
-      if (document.hidden || !state2?.controls || state2.inset <= 0) return;
-      if (!document.getElementById(STRIP_ID)?.isConnected) apply(state2);
-      else if (document.querySelector('[role="main"]') !== observedMain) placeStrip();
-    }, 1e3);
-  }
-  var viewerReported = null;
-  function reportMediaViewer(open) {
-    if (!/Mac/.test(navigator.platform) || !window.__CHATPANE_TITLE_BAR__) return;
-    if (open === viewerReported) return;
-    viewerReported = open;
-    chatpaneMediaViewer(open)?.catch?.(
-      () => diag("title-bar.viewer", "chatpane:media-viewer emit failed")
-    );
-  }
-
   // inject/src/messenger/lib/typing-block.ts
   /*! Includes code adapted from fMess (https://github.com/toanbku/fmess).
    *
@@ -17037,7 +17040,7 @@ ${text2}`)) {
   var BANNER_ATTR = "data-chatpane-media-controls";
   var ACTIONS_ATTR = "data-chatpane-media-actions";
   var OFFSET = "--chatpane-media-controls-offset";
-  var visibleControls = (root) => [...root.querySelectorAll(CONTROL2)].map((control2) => control2.getBoundingClientRect()).filter(
+  var visibleControls = (root) => [...root.querySelectorAll(CONTROL2)].map((control) => control.getBoundingClientRect()).filter(
     (rect) => rect.width >= 16 && rect.height >= 16 && rect.bottom > 0 && // Controls sit near the top; Chatpane's strip (and the offset clearing
     // it) can move them further down, so the band grows with it.
     rect.top < 96 + windowControlsInset() && rect.right > 0 && rect.left < window.innerWidth
@@ -17124,7 +17127,7 @@ ${text2}`)) {
       if (!frame) frame = requestAnimationFrame(refresh);
     };
     const resizeObserver = new ResizeObserver(schedule);
-    const affectsControls = (element2) => !!element2.closest(`${DIALOG2}, ${BANNER}`) || [...observedDialogs, ...markedControls].some((control2) => element2.contains(control2));
+    const affectsControls = (element2) => !!element2.closest(`${DIALOG2}, ${BANNER}`) || [...observedDialogs, ...markedControls].some((control) => element2.contains(control));
     new MutationObserver((records) => {
       if (records.some(
         (record4) => record4.target instanceof Element && affectsControls(record4.target) || record4.type === "childList" && [...record4.addedNodes, ...record4.removedNodes].some(

@@ -220,7 +220,10 @@ pub(crate) fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wr
             .item(&theme_menu)
             .item(&toggle_info)
             .item(&hide_names)
-            .item(&aot);
+            .item(&aot)
+            .separator()
+            // AppKit's toggleFullScreen: item, with its ⌃⌘F.
+            .fullscreen_with_text(menu_label(t("menu.mac.enter_full_screen")));
         #[cfg(debug_assertions)]
         let b = b.separator().item(&devtools);
         let _ = &devtools;
@@ -405,6 +408,12 @@ pub(crate) fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wr
         settings.always_on_top,
         None,
     )?;
+    let full_screen = menu_item(
+        app,
+        "toggle_fullscreen",
+        t("menu.view.full_screen"),
+        Some("F11"),
+    )?;
     let zoom_in = menu_item(app, "zoom_in", t("menu.view.zoom_in"), Some("CmdOrCtrl+="))?;
     let zoom_out = menu_item(
         app,
@@ -455,6 +464,7 @@ pub(crate) fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wr
         .item(&conversation_info)
         .item(&hide_names)
         .item(&always_on_top)
+        .item(&full_screen)
         .separator()
         .item(&zoom_in)
         .item(&zoom_out)
@@ -535,6 +545,45 @@ pub(crate) fn sync_setting_checks(app: &tauri::AppHandle, settings: &Settings) {
 
 #[cfg(target_os = "macos")]
 pub(crate) fn sync_setting_checks(_app: &tauri::AppHandle, _settings: &Settings) {}
+
+/// muda builds every menu with AppKit's validation off, which left the View
+/// menu's full-screen item saying Enter Full Screen in full screen. With it on
+/// for that menu, AppKit names the item Enter or Exit Full Screen and disables
+/// it when no window is open, as in Apple's apps. muda's own items stay enabled:
+/// each targets itself and has no validation of its own. Call once the app menu
+/// is installed.
+#[cfg(target_os = "macos")]
+pub(crate) fn validate_full_screen_item() {
+    use objc2::runtime::AnyObject;
+    use objc2::{class, msg_send, sel};
+    // SAFETY: main-thread AppKit calls (RunEvent::Ready runs there) on the live
+    // main menu; missing menus are skipped.
+    unsafe {
+        let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+        let main: *mut AnyObject = msg_send![app, mainMenu];
+        if main.is_null() {
+            return;
+        }
+        let count: isize = msg_send![main, numberOfItems];
+        for index in 0..count {
+            let item: *mut AnyObject = msg_send![main, itemAtIndex: index];
+            let submenu: *mut AnyObject = msg_send![item, submenu];
+            if submenu.is_null() {
+                continue;
+            }
+            let found: isize = msg_send![
+                submenu,
+                indexOfItemWithTarget: std::ptr::null_mut::<AnyObject>(),
+                andAction: sel!(toggleFullScreen:)
+            ];
+            if found >= 0 {
+                let _: () = msg_send![submenu, setAutoenablesItems: true];
+                return;
+            }
+        }
+    }
+    log::warn!("no full-screen item in the app menu to validate");
+}
 
 /// The focused Messenger window (a `main`/`win-*` window), falling back to
 /// `main`. Used so menu actions affect the window the user is actually looking
@@ -848,6 +897,13 @@ pub(crate) fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::Menu
                 } else {
                     let _ = w.maximize();
                 }
+            }
+        }
+        "toggle_fullscreen" => {
+            if let Some(w) = focused_window(app)
+                && let Err(error) = crate::title_bar::toggle_fullscreen(&w)
+            {
+                log::warn!("full screen toggle failed: {error}");
             }
         }
         "new_window" => request_extra_window(app, crate::window::open_messenger_window),

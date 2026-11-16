@@ -84,6 +84,7 @@
             keys: `${chord(mod, "-")} / ${chord(mod, "=")} / ${chord(mod, "0")}`,
             action: t("page.shortcuts.zoom")
           },
+          { keys: isMac ? chord("⌃", mod, "F") : "F11", action: t("page.shortcuts.full_screen") },
           { keys: chord(mod, ","), action: t("page.shortcuts.open_settings") },
           { keys: chord(mod, "R"), action: t("page.shortcuts.reload") },
           { keys: chord(mod, shift, "Backspace"), action: t("page.shortcuts.clear_cache") },

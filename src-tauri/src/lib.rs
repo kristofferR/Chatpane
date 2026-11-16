@@ -2056,6 +2056,7 @@ pub fn run() {
                     // The Dock-menu delegate hook also needs the app fully
                     // launched (tao installs its NSApplication delegate by now).
                     install_dock_menu_provider();
+                    menu::validate_full_screen_item();
                     macos::power::observe_system_sleep(app);
                 }
                 // Expired schedules can notify immediately. Start after native
