@@ -176,7 +176,7 @@ function alternates(ctx: GuideContext, group: string, guides: Guide[]): string[]
 const pageUrl = (ctx: GuideContext, guide: Guide) => `${ctx.site}${guide.lang}/${guide.slug}/`;
 
 /** "🇻🇳 Tiếng Việt" per language code, from the landing page's language menu. */
-function languageNames(template: string): Record<string, string> {
+export function languageNames(template: string): Record<string, string> {
   const names: Record<string, string> = {};
   for (const [, code, name] of template.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g)) {
     if (code && name) names[code] = name;

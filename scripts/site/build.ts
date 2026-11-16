@@ -5,7 +5,8 @@
  *
  * - docs/<lang>/index.html for every translation,
  * - docs/<lang>/<slug>/index.html for every localized guide (see guides.ts),
- * - the language list and hreflang alternates inside docs/index.html,
+ * - the language list, hreflang alternates and footer language links inside
+ *   docs/index.html,
  * - docs/sitemap.xml (every language plus any other docs/<path>/index.html
  *   page, picked up automatically) and docs/robots.txt.
  *
@@ -14,7 +15,7 @@
  * committed output is stale.
  */
 import { readdir, rm } from "node:fs/promises";
-import { buildGuides, GROUPS, loadGuides } from "./guides";
+import { buildGuides, GROUPS, languageNames, loadGuides } from "./guides";
 
 /** Where the site is served. Changing it and rebuilding moves every absolute
  * URL: canonical, Open Graph, structured data, hreflang, sitemap and robots. */
@@ -130,6 +131,25 @@ template = replaceOnce(
   /var I18N_LOCALES = \[[^\]]*\];/,
   () => `var I18N_LOCALES = ${JSON.stringify(allLangs).replaceAll(",", ", ")};`,
 );
+// The header's language menu needs a script, so the footer links every other
+// language as a plain link for crawlers to follow.
+const names = languageNames(template);
+const LANGUAGE_LINKS = /(<!-- i18n-languages[^>]*-->\n)[\s\S]*?(<!-- \/i18n-languages -->)/;
+const languageLinks = (current: string) =>
+  Object.entries(names)
+    .filter(([lang]) => allLangs.includes(lang) && lang !== current)
+    .map(([lang, name]) => {
+      const href = lang === "en" ? "./" : `./${lang}/`;
+      return `      <a href="${href}" hreflang="${lang}" lang="${lang}">${name}</a>\n`;
+    })
+    .join("");
+const withLanguageLinks = (html: string, current: string) =>
+  replaceOnce(
+    html,
+    LANGUAGE_LINKS,
+    (_, open: string, close: string) => `${open}${languageLinks(current)}${close}`,
+  );
+template = withLanguageLinks(template, "en");
 await writeIfChanged("index.html", template);
 
 // 2. One prerendered page per translation.
@@ -238,6 +258,7 @@ function renderPage(lang: string, locale: Locale): string {
     /var I18N = \/\*__I18N_LOCALES__\*\/ \{.*\};\n/,
     () => `var I18N = /*__I18N_LOCALES__*/ ${payload};\n`,
   );
+  html = withLanguageLinks(html, lang);
   html = html.replaceAll("url(avatars/en/", `url(../avatars/${lang}/`);
   html = html.replace(
     "<!DOCTYPE html>\n",
