@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Xóa tất cả",
   "settings.unsent.kept.deleted": "Đã xóa các tin nhắn đã giữ",
   "settings.unsent.keystore_failed": "{app} không lưu được khóa mã hóa vào kho mật khẩu của hệ thống, vì vậy không thể giữ tin nhắn đã thu hồi.",
+  "settings.unsent.multi_instance": "Không khả dụng khi đang bật Nhiều phiên bản.",
   "settings.account.profile.unknown": "Tài khoản Facebook của bạn",
   "settings.account.log_out": "Đăng xuất…",
   "settings.account.sync_chip": "Đồng bộ với Facebook",

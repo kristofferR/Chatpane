@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Tümünü Sil",
   "settings.unsent.kept.deleted": "Saklanan mesajlar silindi",
   "settings.unsent.keystore_failed": "{app}, şifreleme anahtarını sistemin parola deposuna kaydedemedi; bu yüzden geri alınan mesajları saklayamaz.",
+  "settings.unsent.multi_instance": "Çoklu örnek açıkken kullanılamaz.",
   "settings.account.profile.unknown": "Facebook hesabın",
   "settings.account.log_out": "Çıkış yap…",
   "settings.account.sync_chip": "Facebook ile eşitlenir",

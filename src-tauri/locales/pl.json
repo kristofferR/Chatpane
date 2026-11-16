@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Usuń wszystkie",
   "settings.unsent.kept.deleted": "Zachowane wiadomości zostały usunięte",
   "settings.unsent.keystore_failed": "{app} nie może zapisać klucza szyfrowania w systemowym magazynie haseł, więc nie może zachowywać cofniętych wiadomości.",
+  "settings.unsent.multi_instance": "Niedostępne, gdy włączona jest opcja Wiele instancji.",
   "settings.account.profile.unknown": "Twoje konto na Facebooku",
   "settings.account.log_out": "Wyloguj się…",
   "settings.account.sync_chip": "Synchronizowane z Facebookiem",

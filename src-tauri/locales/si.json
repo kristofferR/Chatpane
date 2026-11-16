@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "සියල්ල මකන්න",
   "settings.unsent.kept.deleted": "තබා ගත් පණිවිඩ මකා දමන ලදී",
   "settings.unsent.keystore_failed": "{app} හට පද්ධතියේ මුරපද ගබඩාවේ එහි සංකේතන යතුර සුරැකීමට නොහැකි වූ බැවින්, යැවීම අවලංගු කළ පණිවිඩ තබා ගත නොහැක.",
+  "settings.unsent.multi_instance": "බහු අවස්ථා සක්‍රිය කර ඇති විට ලබා ගත නොහැක.",
   "settings.account.profile.unknown": "ඔබේ Facebook ගිණුම",
   "settings.account.log_out": "ඉවත් වන්න…",
   "settings.account.sync_chip": "Facebook සමඟ සමමුහුර්ත වේ",

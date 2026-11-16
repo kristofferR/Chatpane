@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Hapus Semua",
   "settings.unsent.kept.deleted": "Pesan yang disimpan telah dihapus",
   "settings.unsent.keystore_failed": "{app} tidak dapat menyimpan kunci enkripsinya di penyimpanan kata sandi sistem, jadi tidak dapat menyimpan pesan yang dibatalkan.",
+  "settings.unsent.multi_instance": "Tidak tersedia selama Multi-instans aktif.",
   "settings.account.profile.unknown": "Akun Facebook-mu",
   "settings.account.log_out": "Keluar dari Akun…",
   "settings.account.sync_chip": "Disinkronkan dengan Facebook",

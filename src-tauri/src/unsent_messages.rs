@@ -313,6 +313,12 @@ struct Store {
     /// Rises with every change, so a page can drop an answer older than the
     /// one it has.
     revision: u64,
+    /// The setting, as this store last applied it. Kept under the store's
+    /// lock, so a request waiting on it can't keep a copy after turning off.
+    enabled: bool,
+    /// Whether pages may keep copies: only one Chatpane process may write the
+    /// file, so not while Multi Instance runs several. Old copies still expire.
+    accepting: bool,
 }
 
 impl Store {
@@ -364,14 +370,13 @@ impl Store {
     }
 }
 
-/// (Keep unsent messages, retention days) as Settings has them now.
-fn preference(app: &tauri::AppHandle) -> (bool, u32) {
-    let state = app.state::<crate::AppState>();
-    let settings = state.settings.lock().unwrap();
-    (
-        settings.recover_unsent_messages,
-        settings.unsent_retention_days,
-    )
+/// The retention period as Settings has it now.
+fn retention_days(app: &tauri::AppHandle) -> u32 {
+    app.state::<crate::AppState>()
+        .settings
+        .lock()
+        .unwrap()
+        .unsent_retention_days
 }
 
 fn with_store<T>(
@@ -388,15 +393,24 @@ fn with_store<T>(
 /// Settings turned the feature on or off. On makes sure the key can be kept
 /// (an error keeps the setting off); off deletes every copy and the key.
 pub(crate) fn set_enabled(app: &tauri::AppHandle, enabled: bool) -> Result<(), String> {
-    if enabled {
-        with_store(app, |store| store.copies().map(|_| ())).map_err(|error| {
-            log::error!("could not set up the unsent messages key: {error}");
-            crate::i18n::t("settings.unsent.keystore_failed").to_owned()
-        })?;
-    } else {
-        with_store(app, |store| store.clear(true)).inspect_err(|error| {
-            log::error!("could not delete kept unsent messages: {error}");
-        })?;
+    with_store(app, |store| {
+        if enabled && !store.accepting {
+            return Err(crate::i18n::t("settings.unsent.multi_instance").to_owned());
+        }
+        if enabled {
+            store.copies().map_err(|error| {
+                log::error!("could not set up the unsent messages key: {error}");
+                crate::i18n::t("settings.unsent.keystore_failed").to_owned()
+            })?;
+        } else {
+            store.clear(true).inspect_err(|error| {
+                log::error!("could not delete kept unsent messages: {error}");
+            })?;
+        }
+        store.enabled = enabled;
+        Ok(())
+    })?;
+    if !enabled {
         announce_change(app, None);
     }
     Ok(())
@@ -409,9 +423,9 @@ pub(crate) fn retention_changed(app: &tauri::AppHandle) {
 
 /// Delete copies past the retention period, and tell the pages showing them.
 fn purge(app: &tauri::AppHandle) {
-    let (enabled, days) = preference(app);
+    let days = retention_days(app);
     match with_store(app, |store| {
-        if enabled {
+        if store.enabled {
             store.purge(days)
         } else if store.path.exists() {
             // A file a failed delete left behind when the setting went off.
@@ -429,12 +443,14 @@ fn purge(app: &tauri::AppHandle) {
 /// How many copies are kept, for Settings.
 #[tauri::command]
 pub(crate) async fn unsent_messages_count(app: tauri::AppHandle) -> Result<usize, String> {
-    if !preference(&app).0 {
-        return Ok(0);
-    }
     tauri::async_runtime::spawn_blocking(move || {
         purge(&app);
-        with_store(&app, |store| Ok(store.copies()?.messages.len()))
+        with_store(&app, |store| {
+            if !store.enabled {
+                return Ok(0);
+            }
+            Ok(store.copies()?.messages.len())
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -502,9 +518,9 @@ fn announce_change(app: &tauri::AppHandle, except: Option<&str>) {
 }
 
 fn answer(app: &tauri::AppHandle, label: &str, request: Request) {
-    let (enabled, days) = preference(app);
+    let days = retention_days(app);
     let result = with_store(app, |store| -> Result<(serde_json::Value, bool), String> {
-        if !enabled {
+        if !(store.enabled && store.accepting) {
             let data =
                 serde_json::json!({ "enabled": false, "revision": store.revision, "messages": [] });
             return Ok((data, false));
@@ -532,15 +548,23 @@ fn answer(app: &tauri::AppHandle, label: &str, request: Request) {
     }
 }
 
-pub(crate) fn install(app: &tauri::AppHandle) {
+pub(crate) fn install(app: &tauri::AppHandle, single_instance: bool) {
     let Ok(directory) = app.path().app_data_dir() else {
         return;
     };
     let path = directory.join(STORE_FILE);
+    let enabled = app
+        .state::<crate::AppState>()
+        .settings
+        .lock()
+        .unwrap()
+        .recover_unsent_messages;
     app.manage(Mutex::new(Store {
         path,
         copies: None,
         revision: 1,
+        enabled,
+        accepting: single_instance,
     }));
 
     // Once now, then hourly.

@@ -1297,7 +1297,6 @@ pub fn run() {
             sound::install(app.handle());
             pane_widths::install(app.handle());
             pinned_chats::install(app.handle());
-            unsent_messages::install(app.handle());
             growth::install(app.handle());
 
             // Portable zips have no installer to register the scheme, and a moved
@@ -2098,6 +2097,7 @@ pub fn run() {
                 // Expired schedules can notify immediately. Start after native
                 // notification setup, including on a cold macOS launch.
                 scheduled_send::install(app, single_instance);
+                unsent_messages::install(app, single_instance);
                 // A pause that outlives this launch still clears its menus on time.
                 let paused_until = app
                     .state::<AppState>()

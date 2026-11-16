@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Slet alle",
   "settings.unsent.kept.deleted": "Gemte beskeder slettet",
   "settings.unsent.keystore_failed": "{app} kunne ikke gemme sin krypteringsnøgle i systemets adgangskodelager og kan derfor ikke beholde fortrudte beskeder.",
+  "settings.unsent.multi_instance": "Ikke tilgængelig, mens Flere instanser er slået til.",
   "settings.account.profile.unknown": "Din Facebook-konto",
   "settings.account.log_out": "Log ud…",
   "settings.account.sync_chip": "Synkroniseres med Facebook",

@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Alle löschen",
   "settings.unsent.kept.deleted": "Behaltene Nachrichten gelöscht",
   "settings.unsent.keystore_failed": "{app} konnte den Schlüssel nicht im Passwortspeicher des Systems sichern und kann daher keine zurückgezogenen Nachrichten behalten.",
+  "settings.unsent.multi_instance": "Nicht verfügbar, solange Mehrere Instanzen aktiviert ist.",
   "settings.account.profile.unknown": "Dein Facebook-Konto",
   "settings.account.log_out": "Abmelden …",
   "settings.account.sync_chip": "Mit Facebook synchronisiert",

@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "حذف الكل",
   "settings.unsent.kept.deleted": "تم حذف الرسائل المحفوظة",
   "settings.unsent.keystore_failed": "تعذّر على {app} حفظ مفتاح التشفير في مخزن كلمات المرور في النظام، لذا لا يمكنه الاحتفاظ بالرسائل الملغى إرسالها.",
+  "settings.unsent.multi_instance": "غير متاح أثناء تشغيل «نسخ متعددة».",
   "settings.account.profile.unknown": "حسابك على Facebook",
   "settings.account.log_out": "تسجيل الخروج…",
   "settings.account.sync_chip": "يُزامَن مع Facebook",

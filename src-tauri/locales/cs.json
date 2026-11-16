@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Smazat vše",
   "settings.unsent.kept.deleted": "Uchované zprávy byly smazány",
   "settings.unsent.keystore_failed": "Aplikace {app} nemohla uložit šifrovací klíč do systémového úložiště hesel, takže nemůže uchovávat zrušené zprávy.",
+  "settings.unsent.multi_instance": "Nedostupné, dokud je zapnuto Více instancí.",
   "settings.account.profile.unknown": "Tvůj účet na Facebooku",
   "settings.account.log_out": "Odhlásit se…",
   "settings.account.sync_chip": "Synchronizuje se s Facebookem",

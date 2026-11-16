@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "সব মুছুন",
   "settings.unsent.kept.deleted": "রাখা মেসেজগুলো মুছে ফেলা হয়েছে",
   "settings.unsent.keystore_failed": "{app} সিস্টেমের পাসওয়ার্ড স্টোরে এনক্রিপশন কী সংরক্ষণ করতে পারেনি, তাই আনসেন্ড করা মেসেজ রাখতে পারবে না।",
+  "settings.unsent.multi_instance": "«একাধিক ইনস্ট্যান্স» চালু থাকলে পাওয়া যায় না।",
   "settings.account.profile.unknown": "আপনার Facebook অ্যাকাউন্ট",
   "settings.account.log_out": "লগ আউট করুন…",
   "settings.account.sync_chip": "Facebook-এর সাথে সিঙ্ক হয়",

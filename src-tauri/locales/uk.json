@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Видалити всі",
   "settings.unsent.kept.deleted": "Збережені повідомлення видалено",
   "settings.unsent.keystore_failed": "{app} не вдалося зберегти ключ шифрування в системному сховищі паролів, тому скасовані повідомлення не можна зберігати.",
+  "settings.unsent.multi_instance": "Недоступно, поки ввімкнено «Кілька екземплярів».",
   "settings.account.profile.unknown": "Ваш акаунт Facebook",
   "settings.account.log_out": "Вийти…",
   "settings.account.sync_chip": "Синхронізується з Facebook",

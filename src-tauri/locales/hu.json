@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Összes törlése",
   "settings.unsent.kept.deleted": "A megőrzött üzenetek törölve",
   "settings.unsent.keystore_failed": "A {app} nem tudta menteni a titkosítási kulcsot a rendszer jelszótárolójába, így nem tud visszavont üzeneteket megőrizni.",
+  "settings.unsent.multi_instance": "Nem érhető el, amíg a Több példány be van kapcsolva.",
   "settings.account.profile.unknown": "A Facebook-fiókod",
   "settings.account.log_out": "Kijelentkezés…",
   "settings.account.sync_chip": "Szinkronizálva a Facebookkal",

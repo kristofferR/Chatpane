@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "ลบทั้งหมด",
   "settings.unsent.kept.deleted": "ลบข้อความที่เก็บไว้แล้ว",
   "settings.unsent.keystore_failed": "{app} บันทึกคีย์เข้ารหัสลงในที่เก็บรหัสผ่านของระบบไม่ได้ จึงเก็บข้อความที่ถูกยกเลิกการส่งไม่ได้",
+  "settings.unsent.multi_instance": "ใช้งานไม่ได้ขณะเปิดหลายอินสแตนซ์",
   "settings.account.profile.unknown": "บัญชี Facebook ของคุณ",
   "settings.account.log_out": "ออกจากระบบ…",
   "settings.account.sync_chip": "ซิงค์กับ Facebook",

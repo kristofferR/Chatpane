@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "全部删除",
   "settings.unsent.kept.deleted": "已删除保留的消息",
   "settings.unsent.keystore_failed": "{app} 无法将加密密钥保存到系统的密码存储中，因此无法保留已撤回的消息。",
+  "settings.unsent.multi_instance": "开启多实例时不可用。",
   "settings.account.profile.unknown": "你的 Facebook 账号",
   "settings.account.log_out": "退出登录…",
   "settings.account.sync_chip": "与 Facebook 同步",

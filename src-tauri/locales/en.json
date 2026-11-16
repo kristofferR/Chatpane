@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Delete All",
   "settings.unsent.kept.deleted": "Kept messages deleted",
   "settings.unsent.keystore_failed": "{app} couldn't save its encryption key in the system's password store, so it can't keep unsent messages.",
+  "settings.unsent.multi_instance": "Unavailable while Multi Instance is on.",
   "settings.account.profile.unknown": "Your Facebook account",
   "settings.account.log_out": "Log Out…",
   "settings.account.sync_chip": "Syncs with Facebook",

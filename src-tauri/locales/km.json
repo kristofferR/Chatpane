@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "លុបទាំងអស់",
   "settings.unsent.kept.deleted": "បានលុបសារដែលបានរក្សាទុក",
   "settings.unsent.keystore_failed": "{app} មិនអាចរក្សាទុកសោអ៊ិនគ្រីបរបស់វានៅក្នុងឃ្លាំងពាក្យសម្ងាត់របស់ប្រព័ន្ធបានទេ ដូច្នេះវាមិនអាចរក្សាទុកសារដែលបានដកការផ្ញើបានទេ។",
+  "settings.unsent.multi_instance": "មិនអាចប្រើបានទេ ពេលបើក បង្អួចច្រើន។",
   "settings.account.profile.unknown": "គណនី Facebook របស់អ្នក",
   "settings.account.log_out": "ចេញពីគណនី…",
   "settings.account.sync_chip": "ធ្វើសមកាលកម្មជាមួយ Facebook",

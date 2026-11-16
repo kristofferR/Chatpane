@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Radera alla",
   "settings.unsent.kept.deleted": "Sparade meddelanden har raderats",
   "settings.unsent.keystore_failed": "{app} kunde inte spara krypteringsnyckeln i systemets lösenordsförråd och kan därför inte behålla ångrade meddelanden.",
+  "settings.unsent.multi_instance": "Inte tillgängligt medan Flera instanser är på.",
   "settings.account.profile.unknown": "Ditt Facebook-konto",
   "settings.account.log_out": "Logga ut…",
   "settings.account.sync_chip": "Synkas med Facebook",

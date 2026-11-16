@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Apagar tudo",
   "settings.unsent.kept.deleted": "Mensagens mantidas apagadas",
   "settings.unsent.keystore_failed": "O {app} não conseguiu salvar a chave de criptografia no armazenamento de senhas do sistema, então não pode manter mensagens canceladas.",
+  "settings.unsent.multi_instance": "Indisponível enquanto Várias instâncias estiver ativado.",
   "settings.account.profile.unknown": "Sua conta do Facebook",
   "settings.account.log_out": "Sair da conta…",
   "settings.account.sync_chip": "Sincroniza com o Facebook",

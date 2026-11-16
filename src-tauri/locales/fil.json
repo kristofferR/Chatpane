@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Burahin Lahat",
   "settings.unsent.kept.deleted": "Nabura na ang mga itinagong mensahe",
   "settings.unsent.keystore_failed": "Hindi ma-save ng {app} ang encryption key nito sa password store ng system, kaya hindi ito makakapagtago ng mga na-unsend na mensahe.",
+  "settings.unsent.multi_instance": "Hindi available habang naka-on ang Multi-instance.",
   "settings.account.profile.unknown": "Ang Facebook account mo",
   "settings.account.log_out": "Mag-log Out…",
   "settings.account.sync_chip": "Naka-sync sa Facebook",

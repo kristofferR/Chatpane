@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Șterge tot",
   "settings.unsent.kept.deleted": "Mesajele păstrate au fost șterse",
   "settings.unsent.keystore_failed": "{app} nu a putut salva cheia de criptare în depozitul de parole al sistemului, așa că nu poate păstra mesajele anulate.",
+  "settings.unsent.multi_instance": "Indisponibil cât timp Instanțe multiple este activat.",
   "settings.account.profile.unknown": "Contul tău Facebook",
   "settings.account.log_out": "Deconectare…",
   "settings.account.sync_chip": "Sincronizat cu Facebook",

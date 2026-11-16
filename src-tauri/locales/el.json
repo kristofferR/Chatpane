@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Διαγραφή όλων",
   "settings.unsent.kept.deleted": "Τα μηνύματα που διατηρήθηκαν διαγράφηκαν",
   "settings.unsent.keystore_failed": "Το {app} δεν μπόρεσε να αποθηκεύσει το κλειδί κρυπτογράφησης στον χώρο κωδικών του συστήματος, οπότε δεν μπορεί να διατηρεί μηνύματα που αποσύρθηκαν.",
+  "settings.unsent.multi_instance": "Μη διαθέσιμο όσο είναι ενεργές οι Πολλαπλές παρουσίες.",
   "settings.account.profile.unknown": "Ο λογαριασμός σου στο Facebook",
   "settings.account.log_out": "Αποσύνδεση…",
   "settings.account.sync_chip": "Συγχρονίζεται με το Facebook",

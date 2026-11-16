@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "سب ڈیلیٹ کریں",
   "settings.unsent.kept.deleted": "رکھے گئے پیغامات ڈیلیٹ ہو گئے",
   "settings.unsent.keystore_failed": "{app} سسٹم کے پاس ورڈ اسٹور میں اپنی انکرپشن کی محفوظ نہیں کر سکا، اس لیے وہ ان سینڈ کیے گئے پیغامات نہیں رکھ سکتا۔",
+  "settings.unsent.multi_instance": "متعدد انسٹینسز آن ہونے پر دستیاب نہیں۔",
   "settings.account.profile.unknown": "آپ کا Facebook اکاؤنٹ",
   "settings.account.log_out": "لاگ آؤٹ…",
   "settings.account.sync_chip": "Facebook کے ساتھ سنک ہوتا ہے",

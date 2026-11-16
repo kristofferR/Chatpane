@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "सब मिटाएँ",
   "settings.unsent.kept.deleted": "रखे गए मैसेज मिटा दिए गए",
   "settings.unsent.keystore_failed": "{app} सिस्टम के पासवर्ड स्टोर में अपनी एन्क्रिप्शन कुंजी सेव नहीं कर सका, इसलिए वह अनसेंड किए गए मैसेज नहीं रख सकता।",
+  "settings.unsent.multi_instance": "मल्टी इंस्टेंस चालू रहने पर उपलब्ध नहीं।",
   "settings.account.profile.unknown": "आपका Facebook अकाउंट",
   "settings.account.log_out": "लॉग आउट करें…",
   "settings.account.sync_chip": "Facebook के साथ सिंक होता है",

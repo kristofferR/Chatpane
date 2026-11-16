@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "အားလုံး ဖျက်ရန်",
   "settings.unsent.kept.deleted": "သိမ်းထားသော မက်ဆေ့ချ်များကို ဖျက်ပြီးပါပြီ",
   "settings.unsent.keystore_failed": "{app} က ကုဒ်ဝှက်ကီးကို စနစ်၏ စကားဝှက်သိုလှောင်ရာတွင် မသိမ်းနိုင်သဖြင့် ပြန်ရုပ်သိမ်းထားသည့် မက်ဆေ့ချ်များကို မသိမ်းထားနိုင်ပါ။",
+  "settings.unsent.multi_instance": "Instance အများအပြား ဖွင့်ထားစဉ် အသုံးမပြုနိုင်ပါ။",
   "settings.account.profile.unknown": "သင့် Facebook အကောင့်",
   "settings.account.log_out": "အကောင့်မှ ထွက်ရန်…",
   "settings.account.sync_chip": "Facebook နဲ့ စင့်ခ်ဖြစ်သည်",

@@ -563,6 +563,7 @@
   "settings.unsent.kept.delete": "Tout supprimer",
   "settings.unsent.kept.deleted": "Messages conservés supprimés",
   "settings.unsent.keystore_failed": "{app} n'a pas pu enregistrer sa clé de chiffrement dans le gestionnaire de mots de passe du système et ne peut donc pas conserver les messages retirés.",
+  "settings.unsent.multi_instance": "Indisponible tant qu'Instances multiples est activé.",
   "settings.account.profile.unknown": "Ton compte Facebook",
   "settings.account.log_out": "Se déconnecter…",
   "settings.account.sync_chip": "Synchronisé avec Facebook",
