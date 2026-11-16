@@ -450,6 +450,9 @@ pub(crate) fn follow_settings(app: &tauri::AppHandle) {
     let enabled = state.settings.lock().unwrap().recover_unsent_messages;
     let _ = with_store(app, |store| {
         store.enabled = enabled;
+        if !enabled {
+            store.clear(true)?;
+        }
         Ok(())
     });
 }
