@@ -1505,6 +1505,7 @@ fn init_script(
     // The strip for the window controls, set before the features run.
     let title_bar_inset = crate::title_bar::initial_script(settings, true);
     let i18n_script = crate::i18n::script(crate::i18n::Audience::Page);
+    let app_icon_script = crate::app_icon::page_script(settings);
     let scheduled_timeout_literal =
         serde_json::to_string(crate::i18n::t("schedule.error.no_response"))
             .expect("UI string serialises");
@@ -1526,6 +1527,8 @@ fn init_script(
     chatpaneHost.endsWith('.messenger.com');
 {title_bar_inset}
   if (!chatpaneInjectable) {{
+    // The icon chosen in Settings, for the connectivity screen.
+    {app_icon_script}
     // Keep normal feature injection off Chatpane's trusted local pages. Debug
     // builds still need their MCP responder there so the connectivity screen
     // can be exercised when Messenger itself is unreachable.

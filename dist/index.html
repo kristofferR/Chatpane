@@ -21,25 +21,9 @@
         width: min(480px, 100%);
         text-align: center;
       }
-      .mark {
-        width: 44px;
-        height: 44px;
-        margin: 0 auto 18px;
-        display: grid;
-        place-items: center;
-        border-radius: 8px;
-        background: #0866ff;
-        color: #fff;
-      }
-      .mark svg {
-        width: 24px;
-        height: 24px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 1.8;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
+      /* The icon's tile fills ~89% of the image; the margin keeps the gap to the title. */
+      .mark { display: block; width: 48px; height: 48px; margin: 0 auto 15px; }
+      .mark img { display: block; width: 100%; height: 100%; }
       h1 {
         margin: 0 0 8px;
         font-size: 22px;
@@ -121,11 +105,10 @@
   </head>
   <body data-state="checking">
     <main>
-      <div class="mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-        </svg>
-      </div>
+      <picture class="mark" aria-hidden="true">
+        <source id="mark-dark" media="(prefers-color-scheme: dark)" />
+        <img id="mark-light" alt="" />
+      </picture>
       <div role="status" aria-live="polite" aria-atomic="true">
         <h1 id="title"></h1>
         <p id="message"></p>
@@ -144,6 +127,12 @@
       const t = (key) => i18n.strings[key] ?? key;
       document.documentElement.lang = i18n.lang;
       document.documentElement.dir = i18n.dir;
+
+      // The icon chosen in Settings, set by the window's init script
+      // (src-tauri/src/app_icon.rs).
+      const appIcon = window.__CHATPANE_APP_ICON__ || { light: "color-light", dark: "color-light" };
+      document.getElementById("mark-light").src = `app-icons/${appIcon.light}.png`;
+      document.getElementById("mark-dark").srcset = `app-icons/${appIcon.dark}.png`;
 
       const invoke = (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args);
       const title = document.getElementById("title");

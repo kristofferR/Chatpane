@@ -54,6 +54,16 @@ fn chosen_icon(s: &Settings, dark: impl FnOnce(&Settings) -> bool) -> &str {
     }
 }
 
+/// Sets `window.__CHATPANE_APP_ICON__` for the connectivity screen
+/// (`dist/index.html`): the icon names to show in light and dark mode.
+pub(crate) fn page_script(s: &Settings) -> String {
+    let icons = serde_json::json!({
+        "light": chosen_icon(s, |_| false),
+        "dark": chosen_icon(s, |_| true),
+    });
+    format!("window.__CHATPANE_APP_ICON__ = {icons};")
+}
+
 /// The PNG for an icon, or None for the installed icon (Color, light), so the
 /// platform's own bundle icon can show at every size.
 fn icon_png(icon: &str) -> Option<&'static [u8]> {
@@ -176,6 +186,18 @@ mod tests {
             "mono-dark"
         );
         assert_eq!(chosen_icon(&Settings::default(), |_| true), "color-light");
+    }
+
+    #[test]
+    fn the_connectivity_screen_gets_the_light_and_dark_icons() {
+        assert_eq!(
+            page_script(&with("color-light", "mono-dark")),
+            r#"window.__CHATPANE_APP_ICON__ = {"dark":"mono-dark","light":"color-light"};"#
+        );
+        assert_eq!(
+            page_script(&with("mono-dark", "")),
+            r#"window.__CHATPANE_APP_ICON__ = {"dark":"mono-dark","light":"mono-dark"};"#
+        );
     }
 
     #[test]
