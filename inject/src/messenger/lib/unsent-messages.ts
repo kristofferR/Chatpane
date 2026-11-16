@@ -264,6 +264,12 @@ export class RevokePairs {
     return entry?.value;
   }
 
+  /** Forget everything waiting: turning the setting off ends every capture. */
+  clear() {
+    this.deleted.clear();
+    this.revoked.clear();
+  }
+
   private wait<T>(map: Waiting<T>, key: string, value: T) {
     map.set(key, { value: map.has(key) ? null : value, until: this.now() + PAIR_WINDOW_MS });
   }
@@ -429,7 +435,8 @@ export function encryptedChatHooks(hooks: CaptureHooks, pairs = new RevokePairs(
             const found = isRow(item)
               ? await readRow(transaction as Transaction, item.msgId)
               : null;
-            if (!found) continue;
+            // Turned off while reading: what was read is never kept.
+            if (!found || !hooks.enabled()) continue;
             const [row, attachments] = found;
             const copy = copyFromRow(row, attachments, row.messageId as string, hooks.options());
             // The Revoked message carries the row's sort key as sortOrderMs.

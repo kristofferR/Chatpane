@@ -17,6 +17,7 @@ import {
   encryptedChatHooks,
   parseCopies,
   type ReadOptions,
+  RevokePairs,
   type UnsentAttachment,
   UnsentCopies,
   type UnsentCopy,
@@ -33,6 +34,7 @@ type Factory = (...args: unknown[]) => unknown;
 type Define = (...args: unknown[]) => unknown;
 
 const copies = new UnsentCopies();
+const pairs = new RevokePairs();
 let account: string | null = null;
 /** The newest native answer applied; older ones arriving late are dropped. */
 let revision = 0;
@@ -135,7 +137,7 @@ function reportError(error: unknown) {
 /** Wrap the Facebook modules that unsend messages and show the notice. */
 export function interceptUnsentMessageModules(define: Define): Define {
   const hooks: CaptureHooks = { enabled, options: readOptions, keep, onError: reportError };
-  const encrypted = encryptedChatHooks(hooks);
+  const encrypted = encryptedChatHooks(hooks, pairs);
   const patches: Record<string, (exports: Record<string, unknown>) => boolean> = {
     MAWBridgeDeleteMessagesHandler: encrypted.patchDelete,
     MAWBridgeNewMsgHandler: encrypted.patchNew,
@@ -173,12 +175,17 @@ export function initUnsentMessages() {
   account = accountId(document.cookie);
   if (!account) return;
   let wasEnabled = enabled();
-  window.addEventListener(CHANGED_EVENT, () => void (enabled() ? request() : copies.clear()));
+  // Off forgets every copy shown and every capture still waiting for its pair.
+  const forget = () => {
+    copies.clear();
+    pairs.clear();
+  };
+  window.addEventListener(CHANGED_EVENT, () => void (enabled() ? request() : forget()));
   window.addEventListener("chatpane:settings", () => {
     if (enabled() === wasEnabled) return;
     wasEnabled = enabled();
     if (wasEnabled) void request();
-    else copies.clear();
+    else forget();
   });
   if (wasEnabled) void request();
 }

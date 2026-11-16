@@ -1098,26 +1098,33 @@ function unsentRetentionRow() {
 
 // How many unsent messages are kept, read when the Account tab shows.
 let unsentKept: number | null = null;
+// The row on screen, updated in place: redrawing the tab when the count
+// arrives could swallow a click on another control (see refresh()).
+let unsentKeptRowShown: HTMLDivElement | null = null;
 async function refreshUnsentKept() {
   try {
-    const count = await invoke("unsent_messages_count");
-    if (count === unsentKept) return;
-    unsentKept = count;
+    unsentKept = await invoke("unsent_messages_count");
   } catch (error) {
     console.error(error);
     unsentKept = null;
   }
-  if (activeTab === "account") renderBody();
+  if (unsentKeptRowShown) showUnsentKept(unsentKeptRowShown);
+}
+
+function showUnsentKept(row: HTMLDivElement) {
+  row.querySelector(".hint")!.textContent =
+    unsentKept === null
+      ? t("settings.unsent.kept.hint")
+      : unsentKept === 0
+        ? t("settings.unsent.kept.none")
+        : t("settings.unsent.kept.count", { count: unsentKept });
+  row.querySelector("button")!.disabled = !settings.recover_unsent_messages || unsentKept === 0;
 }
 
 function unsentKeptRow() {
   const row = buttonRow(
     t("settings.unsent.kept.label"),
-    unsentKept === null
-      ? t("settings.unsent.kept.hint")
-      : unsentKept === 0
-        ? t("settings.unsent.kept.none")
-        : t("settings.unsent.kept.count", { count: unsentKept }),
+    t("settings.unsent.kept.hint"),
     t("settings.unsent.kept.delete"),
     async (button) => {
       button.disabled = true;
@@ -1129,10 +1136,10 @@ function unsentKeptRow() {
         setStatus(errorMessage(error));
       }
       await refreshUnsentKept();
-      renderBody();
     },
   );
-  row.querySelector("button")!.disabled = !settings.recover_unsent_messages || unsentKept === 0;
+  showUnsentKept(row);
+  unsentKeptRowShown = row;
   return row;
 }
 

@@ -143,7 +143,6 @@ mod platform {
 
     const BUS: &str = "org.freedesktop.secrets";
     const SERVICE_PATH: &str = "/org/freedesktop/secrets";
-    const DEFAULT_COLLECTION: &str = "/org/freedesktop/secrets/aliases/default";
     const SERVICE_IFACE: &str = "org.freedesktop.Secret.Service";
     const COLLECTION_IFACE: &str = "org.freedesktop.Secret.Collection";
     const ITEM_IFACE: &str = "org.freedesktop.Secret.Item";
@@ -260,7 +259,18 @@ mod platform {
             value: value.to_vec(),
             content_type: "application/octet-stream".into(),
         };
-        let collection = session.proxy(DEFAULT_COLLECTION, COLLECTION_IFACE)?;
+        // A locked keyring must be unlocked before an item can go in it.
+        let service = session.proxy(SERVICE_PATH, SERVICE_IFACE)?;
+        let default: OwnedObjectPath = service.call("ReadAlias", &("default",)).map_err(error)?;
+        if default.as_str() == "/" {
+            return Err("Secret Service: there is no default keyring".into());
+        }
+        let (_, unlock): (Vec<OwnedObjectPath>, OwnedObjectPath) =
+            service.call("Unlock", &(vec![&default],)).map_err(error)?;
+        if !session.prompt(&unlock)? {
+            return Err("Secret Service: the keyring stayed locked".into());
+        }
+        let collection = session.proxy(default.as_str(), COLLECTION_IFACE)?;
         let (_, prompt): (OwnedObjectPath, OwnedObjectPath) = collection
             .call("CreateItem", &(properties, secret, true))
             .map_err(error)?;

@@ -1163,21 +1163,24 @@
     );
   }
   var unsentKept = null;
+  var unsentKeptRowShown = null;
   async function refreshUnsentKept() {
     try {
-      const count = await invoke("unsent_messages_count");
-      if (count === unsentKept) return;
-      unsentKept = count;
+      unsentKept = await invoke("unsent_messages_count");
     } catch (error) {
       console.error(error);
       unsentKept = null;
     }
-    if (activeTab === "account") renderBody();
+    if (unsentKeptRowShown) showUnsentKept(unsentKeptRowShown);
+  }
+  function showUnsentKept(row) {
+    row.querySelector(".hint").textContent = unsentKept === null ? settingsText("settings.unsent.kept.hint") : unsentKept === 0 ? settingsText("settings.unsent.kept.none") : settingsText("settings.unsent.kept.count", { count: unsentKept });
+    row.querySelector("button").disabled = !settings.recover_unsent_messages || unsentKept === 0;
   }
   function unsentKeptRow() {
     const row = buttonRow(
       settingsText("settings.unsent.kept.label"),
-      unsentKept === null ? settingsText("settings.unsent.kept.hint") : unsentKept === 0 ? settingsText("settings.unsent.kept.none") : settingsText("settings.unsent.kept.count", { count: unsentKept }),
+      settingsText("settings.unsent.kept.hint"),
       settingsText("settings.unsent.kept.delete"),
       async (button) => {
         button.disabled = true;
@@ -1189,10 +1192,10 @@
           setStatus(errorMessage(error));
         }
         await refreshUnsentKept();
-        renderBody();
       }
     );
-    row.querySelector("button").disabled = !settings.recover_unsent_messages || unsentKept === 0;
+    showUnsentKept(row);
+    unsentKeptRowShown = row;
     return row;
   }
   function badgeModeRow() {

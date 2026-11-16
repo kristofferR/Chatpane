@@ -147,6 +147,14 @@ describe("RevokePairs", () => {
     expect(pairs.revokedMessage(key, "notice2")).toBeNull();
   });
 
+  test("turning the setting off forgets captures waiting for their pair", () => {
+    const pairs = new RevokePairs();
+    const key = RevokePairs.key("123@msgr", 1700000000851)!;
+    pairs.deletedRow(key, copy);
+    pairs.clear();
+    expect(pairs.revokedMessage(key, "notice")).toBeNull();
+  });
+
   test("a delete with no Revoked message (Remove for you) expires", () => {
     let now = 0;
     const pairs = new RevokePairs(() => now);

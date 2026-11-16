@@ -468,7 +468,15 @@ fn store_settings(
         }
     }
 
-    if save_settings(app, &effective)? == SaveOutcome::Superseded {
+    let saved = save_settings(app, &effective);
+    if !matches!(saved, Ok(SaveOutcome::Written))
+        && effective.recover_unsent_messages != prev_recover_unsent
+    {
+        // The store already followed this change; follow the settings that
+        // stay in effect instead.
+        crate::unsent_messages::follow_settings(app);
+    }
+    if saved? == SaveOutcome::Superseded {
         // A newer settings snapshot already reached disk from a concurrent
         // save; applying this stale one would leave runtime settings diverged
         // from what is persisted. Skip the in-memory update and apply, and

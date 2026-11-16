@@ -153,12 +153,12 @@
     const queryAt = beforeHash.indexOf("?");
     if (queryAt < 0) return { href, removed: false };
     const prefix = beforeHash.slice(0, queryAt);
-    const pairs = beforeHash.slice(queryAt + 1).split("&");
-    const kept = pairs.filter((pair) => {
+    const pairs2 = beforeHash.slice(queryAt + 1).split("&");
+    const kept = pairs2.filter((pair) => {
       const key = trackingKey(pair);
       return !key || !FACEBOOK_TRACKING_PARAMS.has(key);
     });
-    if (kept.length === pairs.length) return { href, removed: false };
+    if (kept.length === pairs2.length) return { href, removed: false };
     return {
       href: `${prefix}${kept.length ? `?${kept.join("&")}` : ""}${hash}`,
       removed: true
@@ -7550,7 +7550,7 @@ ${button.innerHTML}`)
             let displayed = record4.threadTitle;
             const group = typeof types?.isGroup === "function" ? types.isGroup(thread2.threadType) === true : void 0;
             if (!showNicknames(mode, group)) {
-              const pairs = record4.participantsAndContacts.map((pair) => {
+              const pairs2 = record4.participantsAndContacts.map((pair) => {
                 if (!Array.isArray(pair)) return pair;
                 const [participant, contact] = pair;
                 if (!participant || typeof participant !== "object" || !contact || typeof contact !== "object" || !("name" in contact) || typeof contact.name !== "string")
@@ -7560,7 +7560,7 @@ ${button.innerHTML}`)
               const computed = computeTitle(
                 intlList.CONJUNCTIONS?.NONE,
                 thread2.threadType,
-                pairs,
+                pairs2,
                 record4.actorId
               );
               if (typeof computed === "string") displayed = computed;
@@ -8470,6 +8470,11 @@ ${time}`;
       if (entry?.value) map.delete(key);
       return entry?.value;
     }
+    /** Forget everything waiting: turning the setting off ends every capture. */
+    clear() {
+      this.deleted.clear();
+      this.revoked.clear();
+    }
     wait(map, key, value) {
       map.set(key, { value: map.has(key) ? null : value, until: this.now() + PAIR_WINDOW_MS });
     }
@@ -8550,12 +8555,12 @@ ${time}`;
     }, method2);
     return true;
   }
-  function encryptedChatHooks(hooks, pairs = new RevokePairs()) {
+  function encryptedChatHooks(hooks, pairs2 = new RevokePairs()) {
     const revoked = (message) => {
       if (!isRow2(message) || message.type_ !== REVOKED || message.isAuthorMe === true) return;
       const key = RevokePairs.key(message.chatJid, message.sortOrderMs);
       if (!key || typeof message.msgId !== "string") return;
-      const copy = pairs.revokedMessage(key, message.msgId);
+      const copy = pairs2.revokedMessage(key, message.msgId);
       if (copy) hooks.keep(copy);
     };
     return {
@@ -8569,12 +8574,12 @@ ${time}`;
             if (typeof event.threadJid !== "string") return;
             for (const item of event.messages) {
               const found = isRow2(item) ? await readRow(transaction, item.msgId) : null;
-              if (!found) continue;
+              if (!found || !hooks.enabled()) continue;
               const [row, attachments] = found;
               const copy = copyFromRow(row, attachments, row.messageId, hooks.options());
               const sortKey = i64Text(row.primarySortKey, hooks.options().i64ToText);
               const key = copy && RevokePairs.key(event.threadJid, sortKey);
-              const paired = key && pairs.deletedRow(key, copy);
+              const paired = key && pairs2.deletedRow(key, copy);
               if (paired) hooks.keep(paired);
             }
           },
@@ -8644,6 +8649,7 @@ ${time}`;
   var CHANGED_EVENT2 = "chatpane:unsent-messages-changed";
   var MESSAGE_PROCEDURES = /* @__PURE__ */ new Set(["LSUpsertMessage", "LSDeleteThenInsertMessage"]);
   var copies = new UnsentCopies();
+  var pairs = new RevokePairs();
   var account2 = null;
   var revision = 0;
   function enabled2() {
@@ -8728,7 +8734,7 @@ ${time}`;
   }
   function interceptUnsentMessageModules(define) {
     const hooks = { enabled: enabled2, options: readOptions, keep, onError: reportError };
-    const encrypted = encryptedChatHooks(hooks);
+    const encrypted = encryptedChatHooks(hooks, pairs);
     const patches = {
       MAWBridgeDeleteMessagesHandler: encrypted.patchDelete,
       MAWBridgeNewMsgHandler: encrypted.patchNew,
@@ -8763,12 +8769,16 @@ ${time}`;
     account2 = accountId(document.cookie);
     if (!account2) return;
     let wasEnabled = enabled2();
-    window.addEventListener(CHANGED_EVENT2, () => void (enabled2() ? request2() : copies.clear()));
+    const forget = () => {
+      copies.clear();
+      pairs.clear();
+    };
+    window.addEventListener(CHANGED_EVENT2, () => void (enabled2() ? request2() : forget()));
     window.addEventListener("chatpane:settings", () => {
       if (enabled2() === wasEnabled) return;
       wasEnabled = enabled2();
       if (wasEnabled) void request2();
-      else copies.clear();
+      else forget();
     });
     if (wasEnabled) void request2();
   }

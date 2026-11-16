@@ -323,9 +323,29 @@ struct Store {
 
 impl Store {
     fn copies(&mut self) -> Result<&mut Copies, String> {
+        // While pages can't keep copies, other Chatpane processes may share
+        // the file, so every use reads it again rather than trusting a copy.
+        if !self.accepting {
+            self.copies = None;
+        }
         if self.copies.is_none() {
             let key = load_or_create_key()?;
-            let file = std::fs::read(&self.path).ok();
+            // A snapshot a crash left mid-save holds copies this file may have
+            // dropped since. (Another process may be mid-save while several run.)
+            if self.accepting {
+                for temp in account_files(self.path.parent().unwrap_or(Path::new(".")))
+                    .iter()
+                    .filter(|file| **file != self.path)
+                {
+                    remove(temp)?;
+                }
+            }
+            let file = match std::fs::read(&self.path) {
+                Ok(file) => Some(file),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                // Starting empty would overwrite the copies on the next save.
+                Err(error) => return Err(error.to_string()),
+            };
             self.copies = Some(Copies::from_file(key, file.as_deref()));
         }
         Ok(self.copies.as_mut().expect("opened above"))
@@ -335,10 +355,15 @@ impl Store {
     fn purge(&mut self, retention_days: u32) -> Result<bool, String> {
         let path = self.path.clone();
         let copies = self.copies()?;
+        let before = copies.messages.clone();
         if !copies.purge(now_ms(), retention_days) {
             return Ok(false);
         }
-        copies.save(&path)?;
+        if let Err(error) = copies.save(&path) {
+            // Keep them in memory too, so the next purge tries again.
+            copies.messages = before;
+            return Err(error);
+        }
         self.revision += 1;
         Ok(true)
     }
@@ -366,7 +391,9 @@ impl Store {
             }
         }
         self.revision += 1;
-        remove(&self.path)
+        account_files(self.path.parent().unwrap_or(Path::new(".")))
+            .iter()
+            .try_for_each(|file| remove(file))
     }
 }
 
@@ -414,6 +441,17 @@ pub(crate) fn set_enabled(app: &tauri::AppHandle, enabled: bool) -> Result<(), S
         announce_change(app, None);
     }
     Ok(())
+}
+
+/// A settings save failed after `set_enabled` ran: follow the setting that
+/// stays in effect. Copies already deleted stay deleted.
+pub(crate) fn follow_settings(app: &tauri::AppHandle) {
+    let state = app.state::<crate::AppState>();
+    let enabled = state.settings.lock().unwrap().recover_unsent_messages;
+    let _ = with_store(app, |store| {
+        store.enabled = enabled;
+        Ok(())
+    });
 }
 
 /// Settings changed the retention period.
