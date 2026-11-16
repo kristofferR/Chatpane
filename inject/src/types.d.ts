@@ -40,7 +40,7 @@ declare const chatpaneOpenDownloadPrivacy: () => Promise<unknown> | undefined;
 /** Reports the star toast to native code (growth.rs). */
 declare const chatpaneStarPrompt: (action: "shown" | "star") => Promise<unknown> | undefined;
 declare const chatpaneWindowControl: (
-  action: "minimize" | "toggle-maximize" | "close" | "drag",
+  action: "minimize" | "toggle-maximize" | "toggle-fullscreen" | "close" | "drag",
 ) => Promise<unknown> | undefined;
 declare const chatpaneMediaViewer: (open: boolean) => Promise<unknown> | undefined;
 declare const chatpaneScheduledSend: (

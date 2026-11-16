@@ -220,7 +220,10 @@ pub(crate) fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wr
             .item(&theme_menu)
             .item(&toggle_info)
             .item(&hide_names)
-            .item(&aot);
+            .item(&aot)
+            .separator()
+            // AppKit's toggleFullScreen: item, with its ⌃⌘F.
+            .fullscreen_with_text(menu_label(t("menu.mac.enter_full_screen")));
         #[cfg(debug_assertions)]
         let b = b.separator().item(&devtools);
         let _ = &devtools;
@@ -405,6 +408,12 @@ pub(crate) fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wr
         settings.always_on_top,
         None,
     )?;
+    let full_screen = menu_item(
+        app,
+        "toggle_fullscreen",
+        t("menu.view.full_screen"),
+        Some("F11"),
+    )?;
     let zoom_in = menu_item(app, "zoom_in", t("menu.view.zoom_in"), Some("CmdOrCtrl+="))?;
     let zoom_out = menu_item(
         app,
@@ -455,6 +464,7 @@ pub(crate) fn build_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wr
         .item(&conversation_info)
         .item(&hide_names)
         .item(&always_on_top)
+        .item(&full_screen)
         .separator()
         .item(&zoom_in)
         .item(&zoom_out)
@@ -848,6 +858,13 @@ pub(crate) fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::Menu
                 } else {
                     let _ = w.maximize();
                 }
+            }
+        }
+        "toggle_fullscreen" => {
+            if let Some(w) = focused_window(app)
+                && let Err(error) = crate::title_bar::toggle_fullscreen(&w)
+            {
+                log::warn!("full screen toggle failed: {error}");
             }
         }
         "new_window" => request_extra_window(app, crate::window::open_messenger_window),

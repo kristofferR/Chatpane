@@ -32,7 +32,8 @@ const CONTROLS_ID = "chatpane-window-controls";
 
 let state: TitleBarState | null = null;
 
-function control(action: Parameters<typeof chatpaneWindowControl>[0]) {
+/** Ask the native side for a window action on this page's own window. */
+export function windowControl(action: Parameters<typeof chatpaneWindowControl>[0]) {
   chatpaneWindowControl(action)?.catch?.(() =>
     diag("title-bar.control", "chatpane:window-control emit failed"),
   );
@@ -67,13 +68,13 @@ function buildControls(): HTMLElement {
   box.id = CONTROLS_ID;
   box.setAttribute("role", "group");
   box.setAttribute("aria-label", t("page.window.controls"));
-  const button = (name: string, label: string, action: Parameters<typeof control>[0]) => {
+  const button = (name: string, label: string, action: Parameters<typeof windowControl>[0]) => {
     const b = document.createElement("button");
     b.type = "button";
     b.dataset.control = name;
     b.setAttribute("aria-label", label);
     b.title = label;
-    b.addEventListener("click", () => control(action));
+    b.addEventListener("click", () => windowControl(action));
     return b;
   };
   box.append(
@@ -94,7 +95,7 @@ function buildStrip(): HTMLElement {
   strip.addEventListener("mousedown", (event) => {
     if (event.button !== 0 || !state?.controls) return;
     event.preventDefault();
-    control(event.detail === 2 && state.maximize ? "toggle-maximize" : "drag");
+    windowControl(event.detail === 2 && state.maximize ? "toggle-maximize" : "drag");
   });
   return strip;
 }

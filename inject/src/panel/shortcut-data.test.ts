@@ -4,7 +4,7 @@ import { shortcutGroups } from "./shortcut-data";
 describe("shortcutGroups", () => {
   test("lists every supported shortcut chord", () => {
     const items = shortcutGroups(false).flatMap((group) => group.items);
-    expect(items).toHaveLength(21);
+    expect(items).toHaveLength(22);
     expect(new Set(items.map((item) => item.keys)).size).toBe(items.length);
     expect(items.some((item) => item.action === "Keyboard shortcuts")).toBe(true);
   });

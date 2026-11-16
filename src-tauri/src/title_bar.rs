@@ -275,12 +275,15 @@ pub(crate) fn sync_all(app: &tauri::AppHandle) {
 /// A window action: from Messenger's page through the signed
 /// `chatpane:window-control` event (lib.rs), which names the sender's window,
 /// or from Chatpane's own pages through [`window_control`]. The worst a page
-/// can do is minimize, maximize, move or close (to the tray) its own window.
+/// can do is minimize, maximize, fill the screen with, move or close (to the
+/// tray) its own window.
 #[derive(Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Action {
     Minimize,
     ToggleMaximize,
+    /// F11, which the page sees on Windows: the native menu never shows there.
+    ToggleFullscreen,
     Close,
     Drag,
 }
@@ -309,6 +312,7 @@ pub(crate) fn perform(window: &WebviewWindow, action: Action) {
                 window.maximize()
             }
         }
+        Action::ToggleFullscreen => toggle_fullscreen(window),
         // As the system's close button: hides to the tray when that is set.
         Action::Close => window.close(),
         Action::Drag => window.start_dragging(),
@@ -316,6 +320,12 @@ pub(crate) fn perform(window: &WebviewWindow, action: Action) {
     if let Err(error) = result {
         log::warn!("window control {action:?} failed: {error}");
     }
+}
+
+/// Enter or leave full screen. The strip and controls follow through the
+/// resize ([`watch`]).
+pub(crate) fn toggle_fullscreen(window: &WebviewWindow) -> tauri::Result<()> {
+    window.set_fullscreen(!window.is_fullscreen().unwrap_or(false))
 }
 
 #[cfg(test)]
@@ -326,6 +336,8 @@ mod tests {
     fn page_actions_parse_and_unknown_ones_are_refused() {
         let ok: Action = serde_json::from_str(r#""toggle-maximize""#).unwrap();
         assert_eq!(ok, Action::ToggleMaximize);
+        let full: Action = serde_json::from_str(r#""toggle-fullscreen""#).unwrap();
+        assert_eq!(full, Action::ToggleFullscreen);
         assert!(serde_json::from_str::<Action>(r#""quit""#).is_err());
     }
 

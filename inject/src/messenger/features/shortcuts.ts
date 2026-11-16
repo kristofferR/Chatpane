@@ -13,6 +13,7 @@ import {
   stepConversation,
 } from "./conversation-actions";
 import { stopThreadRestore } from "./thread-nav";
+import { windowControl } from "./title-bar";
 import { zoomIn, zoomOut, zoomReset } from "./zoom";
 
 const isMac = /mac/i.test(navigator.platform) || /mac/i.test(navigator.userAgent);
@@ -61,6 +62,8 @@ export function initShortcuts() {
 
 /* ----------------------- Function-key shortcuts ----------------------- */
 // F2 check for updates · F3 settings · F5 reload (parity with messenger-next).
+// F11 full screen on Windows and Linux, where the native View menu also has it
+// but Windows never shows that menu (title_bar.rs); macOS uses ⌃⌘F.
 export function initFunctionKeys() {
   document.addEventListener(
     "keydown",
@@ -77,6 +80,9 @@ export function initFunctionKeys() {
       } else if (e.key === "F2") {
         e.preventDefault();
         window.__chatpaneCheckUpdates?.();
+      } else if (e.key === "F11" && !isMac) {
+        e.preventDefault();
+        if (!e.repeat) windowControl("toggle-fullscreen");
       } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
         // Cmd/Ctrl+1–9: jump to the Nth conversation in the list.
         const target = chatRows()[Number(e.key) - 1];
