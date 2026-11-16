@@ -28,6 +28,8 @@
     "allow-set-messenger-account",
     "allow-messenger-profile",
     "allow-log-out",
+    "allow-unsent-messages-count",
+    "allow-delete-unsent-messages",
     "allow-open-facebook-language",
     "allow-list-themes",
     "allow-add-theme",

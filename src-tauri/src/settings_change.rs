@@ -80,6 +80,8 @@ setting_changes! {
     GlobalHotkey => global_hotkey: bool,
     BlockTelemetry => block_telemetry: bool,
     StripLinkTracking => strip_link_tracking: bool,
+    RecoverUnsentMessages => recover_unsent_messages: bool,
+    UnsentRetentionDays => unsent_retention_days: u32,
     SendWithAccelerator => send_with_accelerator: bool,
     DownloadBehavior => download_behavior: DownloadBehavior,
     HoldFailures => hold_failures: bool,

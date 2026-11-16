@@ -167,6 +167,7 @@ const FIELDS = [
     t("settings.privacy.strip_link_tracking.label"),
     t("settings.privacy.strip_link_tracking.hint"),
   ],
+  ["recover_unsent_messages", t("settings.unsent.keep.label"), t("settings.unsent.keep.hint")],
   [
     "send_with_accelerator",
     t("settings.advanced.send_with_accelerator.label"),
@@ -273,6 +274,7 @@ const TABS: Tab[] = [
       ["active_status", "read_receipts", "account_notice", "block_typing_indicator"],
       ["hide_names", "hide_avatars"],
       ["block_telemetry", "strip_link_tracking"],
+      ["recover_unsent_messages", "unsent_retention_days", "unsent_messages_kept"],
     ],
   },
   {
@@ -390,6 +392,9 @@ function persist(change: SettingsChange) {
 async function saveSetting(change: SettingsChange) {
   try {
     settings = await invoke("update_setting", { change });
+    if (change.key === "recover_unsent_messages" || change.key === "unsent_retention_days") {
+      void refreshUnsentKept();
+    }
     if (change.key === "autostart") {
       autostartStatus = await readAutostartStatus();
       settings = await invoke("get_settings");
@@ -1074,6 +1079,63 @@ function updateCheckHoursRow() {
   );
 }
 
+// How long kept unsent messages stay. Mirrors RETENTION_DAYS in
+// src-tauri/src/unsent_messages.rs.
+function unsentRetentionRow() {
+  return selectRow(
+    settings.unsent_retention_days,
+    7,
+    [
+      [7, t("settings.unsent.retention.week")],
+      [30, t("settings.unsent.retention.month")],
+    ],
+    t("settings.unsent.retention.label"),
+    t("settings.unsent.retention.hint"),
+    !settings.recover_unsent_messages,
+    (value) => persist({ key: "unsent_retention_days", value }),
+  );
+}
+
+// How many unsent messages are kept, read when the Account tab shows.
+let unsentKept: number | null = null;
+async function refreshUnsentKept() {
+  try {
+    const count = await invoke("unsent_messages_count");
+    if (count === unsentKept) return;
+    unsentKept = count;
+  } catch (error) {
+    console.error(error);
+    unsentKept = null;
+  }
+  if (activeTab === "account") renderBody();
+}
+
+function unsentKeptRow() {
+  const row = buttonRow(
+    t("settings.unsent.kept.label"),
+    unsentKept === null
+      ? t("settings.unsent.kept.hint")
+      : unsentKept === 0
+        ? t("settings.unsent.kept.none")
+        : t("settings.unsent.kept.count", { count: unsentKept }),
+    t("settings.unsent.kept.delete"),
+    async (button) => {
+      button.disabled = true;
+      try {
+        if (await invoke("delete_unsent_messages")) {
+          setStatus(t("settings.unsent.kept.deleted"), 2000);
+        }
+      } catch (error) {
+        setStatus(errorMessage(error));
+      }
+      await refreshUnsentKept();
+      renderBody();
+    },
+  );
+  row.querySelector("button")!.disabled = !settings.recover_unsent_messages || unsentKept === 0;
+  return row;
+}
+
 // Badge counts mode — only meaningful while the unread badge is on.
 function badgeModeRow() {
   return selectRow(
@@ -1255,6 +1317,7 @@ function selectTab(id: string, focus: boolean) {
       localStorage.setItem("chatpane:settingsTab", id);
     } catch (_) {}
     render();
+    if (id === "account") void refreshUnsentKept();
   }
   if (focus) {
     const el = byId(`tab-${id}`);
@@ -1592,6 +1655,8 @@ const CUSTOM_ROWS = {
   notification_reaction: notificationReactionRow,
   notification_sound: notificationSoundRow,
   update_check_hours: updateCheckHoursRow,
+  unsent_retention_days: unsentRetentionRow,
+  unsent_messages_kept: unsentKeptRow,
   download_behavior: downloadBehaviorRow,
   tray_icon_style: trayIconStyleRow,
   autostart: autostartRow,
@@ -1665,6 +1730,10 @@ byId("reset").onclick = (event) => {
 
 // Pick up changes made elsewhere (e.g. the View menu) when refocused.
 window.addEventListener("focus", refresh);
+// And unsent messages kept since.
+window.addEventListener("focus", () => {
+  if (activeTab === "account") void refreshUnsentKept();
+});
 // And Messenger account changes made on another device.
 window.addEventListener("focus", () => {
   if (showsAccount() && messengerAccount.state) loadMessengerAccount();
@@ -1724,6 +1793,7 @@ updateButton.onclick = async () => {
 render();
 // The OS's Start on System Startup state, which may also correct the setting.
 refresh();
+if (activeTab === "account") void refreshUnsentKept();
 updateController
   .initialize(
     BOOT.install_mode

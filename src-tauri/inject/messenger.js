@@ -306,8 +306,8 @@
     return (cookie || "").match(/(?:^|;\s*)c_user=(\d{1,32})(?:;|$)/)?.[1] ?? null;
   }
   function accountScopedStorageKey(baseKey, cookie) {
-    const account3 = accountId(cookie);
-    return account3 ? `${baseKey}:${account3}` : null;
+    const account4 = accountId(cookie);
+    return account4 ? `${baseKey}:${account4}` : null;
   }
   function isMessengerContentPath(pathname) {
     const path = String(pathname || "");
@@ -373,8 +373,8 @@
     const seconds = Number(text2);
     return Number.isSafeInteger(seconds) ? seconds : null;
   }
-  async function readMessengerDndUntil(account3, load, timeoutMs = 750) {
-    if (!/^\d+$/.test(account3) || typeof load !== "function") return null;
+  async function readMessengerDndUntil(account4, load, timeoutMs = 750) {
+    if (!/^\d+$/.test(account4) || typeof load !== "function") return null;
     let timer;
     const read = async () => {
       const singleton = load("LSDatabaseSingleton");
@@ -382,7 +382,7 @@
       const i64 = load("I64");
       const table = db?.tables?.notification_settings;
       if (typeof table?.get !== "function" || typeof i64?.of_string !== "function") return null;
-      const row = await table.get(i64.of_string(account3));
+      const row = await table.get(i64.of_string(account4));
       if (!row || typeof row !== "object") return 0;
       return muteUntilFromDatabase(
         row.globalMuteUntil,
@@ -438,7 +438,7 @@
     const [presence] = await loadFacebookModules(load, ["MWInboxSettingsPresenceDialog.entrypoint"]);
     await loadRoot(presence);
   }
-  async function readMessengerAccount(load, account3) {
+  async function readMessengerAccount(load, account4) {
     await loadPreferencesCode(load);
     const [environment, relay, query, resolve] = await loadFacebookModules(load, [
       "CometRelayEnvironment",
@@ -448,15 +448,15 @@
     ]);
     const data = await relay.fetchQuery(defaultExport(environment), query, {}, { fetchPolicy: "network-only" }).toPromise();
     if (!data?.viewer) throw new Error(t("page.account.no_settings"));
-    const dndUntil = await readMessengerDndUntil(account3, load, 3e3);
+    const dndUntil = await readMessengerDndUntil(account4, load, 3e3);
     return stateFromViewer(
       data.viewer,
       defaultExport(resolve),
       dndUntil,
-      await readReadReceipts(load, account3)
+      await readReadReceipts(load, account4)
     );
   }
-  async function readReadReceipts(load, account3, timeoutMs = 3e3) {
+  async function readReadReceipts(load, account4, timeoutMs = 3e3) {
     let timer;
     try {
       return await Promise.race([
@@ -476,7 +476,7 @@
       ]);
       const db = await database2.LSDatabaseSingleton;
       const table = db.tables?.messaging_privacy_settings;
-      const row = typeof table?.get === "function" ? await table.get(i64.of_string(account3)) : null;
+      const row = typeof table?.get === "function" ? await table.get(i64.of_string(account4)) : null;
       let pageDefault = null;
       try {
         pageDefault = load?.("MessengerWebPrivacySettings")?.read_receipts_disabled;
@@ -507,17 +507,17 @@
       "readwrite"
     );
   }
-  async function changeMessengerAccount(load, account3, change) {
+  async function changeMessengerAccount(load, account4, change) {
     await loadPreferencesCode(load);
     if (change.setting === "activeStatus") {
       await setActiveStatus(load, change.value);
     } else if (change.setting === "readReceipts") {
       await setReadReceipts(load, change.value);
     } else {
-      await setDoNotDisturb(load, account3, change.value);
+      await setDoNotDisturb(load, account4, change.value);
     }
     for (let attempt = 0; ; attempt++) {
-      const state3 = await readMessengerAccount(load, account3);
+      const state3 = await readMessengerAccount(load, account4);
       if (applied(state3, change)) return state3;
       if (attempt === 3) throw new Error(t("page.account.not_applied"));
       await new Promise((resolve) => setTimeout(resolve, 1e3));
@@ -536,7 +536,7 @@
       }
     }
   }
-  async function setDoNotDisturb(load, account3, minutes) {
+  async function setDoNotDisturb(load, account4, minutes) {
     const [i64, serverTime, database2, factory, writer, update] = await loadFacebookModules(load, [
       "I64",
       "ServerTime",
@@ -551,7 +551,7 @@
     const makeFactory = defaultExport(factory);
     const run = defaultExport(update);
     await db.runInTransaction((tx) => run(makeFactory(tx), { globalMuteUntil: until }), "readwrite");
-    writer.updateMute(account3, seconds === 0 ? 0 : i64.to_float(until));
+    writer.updateMute(account4, seconds === 0 ? 0 : i64.to_float(until));
   }
   async function setActiveStatus(load, on2) {
     const [environment, relay, mutation, report, database2, gkx, qex] = await loadFacebookModules(
@@ -628,10 +628,10 @@
     const name = value.trim();
     return name && !VAULTED.test(name) ? name : null;
   }
-  async function readMessengerProfile(load, account3, toPicture) {
+  async function readMessengerProfile(load, account4, toPicture) {
     const contact = await readMessengerDatabase(
       load,
-      ({ db, i64 }) => db.tables.contacts.get(i64.of_string(account3)),
+      ({ db, i64 }) => db.tables.contacts.get(i64.of_string(account4)),
       3e3
     );
     const row = contact && typeof contact === "object" ? contact : null;
@@ -796,9 +796,9 @@
   function initAccountRequests() {
     if (!window.__TAURI_INTERNALS__) return;
     const signedIn = () => {
-      const account3 = accountId(document.cookie);
-      if (!account3) throw new Error(t("page.account.log_in_first"));
-      return account3;
+      const account4 = accountId(document.cookie);
+      if (!account4) throw new Error(t("page.account.log_in_first"));
+      return account4;
     };
     const actions = {
       // Log Out (Ref #356): Facebook's own logout, so the session ends there too.
@@ -827,16 +827,16 @@
         return state3;
       }
     };
-    const reply = (request2, payload) => invoke("plugin:event|emit", {
+    const reply = (request3, payload) => invoke("plugin:event|emit", {
       event: "chatpane:account-result",
-      payload: { request: request2, ...payload }
+      payload: { request: request3, ...payload }
     });
-    window.__chatpaneAccount = (request2, action2, value) => {
+    window.__chatpaneAccount = (request3, action2, value) => {
       const run = actions[action2];
-      (run ? Promise.resolve().then(() => run(value)) : Promise.reject(new Error("Unknown request"))).then((state3) => reply(request2, { ok: true, state: state3 })).catch((error) => {
+      (run ? Promise.resolve().then(() => run(value)) : Promise.reject(new Error("Unknown request"))).then((state3) => reply(request3, { ok: true, state: state3 })).catch((error) => {
         const message = error instanceof Error ? error.message : String(error);
         diag(`account.${action2}`, message.slice(0, 200));
-        return reply(request2, { ok: false, error: message });
+        return reply(request3, { ok: false, error: message });
       });
     };
   }
@@ -1144,15 +1144,15 @@
       if (!visible) return { state: "pending", wait_ms: 0 };
       this.lastSample = now;
       if (!this.request) {
-        const request2 = {
+        const request3 = {
           since: now,
           handle: this.requestFrame(() => {
-            if (this.request !== request2) return;
+            if (this.request !== request3) return;
             this.request = void 0;
             this.hasFrame = true;
           })
         };
-        this.request = request2;
+        this.request = request3;
       }
       const wait_ms = Math.max(0, Math.round(now - this.request.since));
       return {
@@ -1418,7 +1418,7 @@ ${button.innerHTML}`);
     return controls;
   }
   var enabled = (button) => button.getAttribute("aria-disabled") !== "true" && !button.matches(":disabled");
-  function findSendButton(box, before) {
+  function findSendButton(box, before2) {
     const region = composerRegion(box);
     if (!region) return null;
     const send = componentButton(["MWV2ComposerSendButton.react"], region);
@@ -1427,7 +1427,7 @@ ${button.innerHTML}`);
     for (const button of region.querySelectorAll('button, [role="button"]')) {
       if (button.hasAttribute("data-chatpane-schedule") || !(box.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING) || !isShown(button) || !enabled(button))
         continue;
-      if (before.get(button) !== `${button.getAttribute("aria-label") ?? ""}
+      if (before2.get(button) !== `${button.getAttribute("aria-label") ?? ""}
 ${button.innerHTML}`)
         changed.push(button);
     }
@@ -2450,11 +2450,11 @@ ${button.innerHTML}`)
     };
     const checkWorker = () => {
       const state3 = workerConnectionState();
-      const account3 = accountKey();
+      const account4 = accountKey();
       const id = workerId();
-      if (!probeIdentity || probeIdentity.account !== account3 || probeIdentity.id !== id || probeIdentity.state !== state3) {
+      if (!probeIdentity || probeIdentity.account !== account4 || probeIdentity.id !== id || probeIdentity.state !== state3) {
         const replaced = probeIdentity !== void 0;
-        probeIdentity = { account: account3, id, state: state3 };
+        probeIdentity = { account: account4, id, state: state3 };
         workerFailures.succeeded();
         verified = void 0;
         stateRouteUnavailableFor = void 0;
@@ -2474,7 +2474,7 @@ ${button.innerHTML}`)
         return;
       }
       const sendAndReceive = bridge.sendAndReceive.bind(bridge);
-      const stillCurrent = () => account3 === accountKey() && state3 === workerConnectionState() && id === workerId();
+      const stillCurrent = () => account4 === accountKey() && state3 === workerConnectionState() && id === workerId();
       const observation = stateRouteUnavailableFor?.() ? void 0 : observeWorkerConnection(state3, now);
       workerProbePending = true;
       let live = true;
@@ -2485,18 +2485,18 @@ ${button.innerHTML}`)
           WORKER_HEARTBEAT_TIMEOUT_MS
         );
       });
-      const request2 = (route) => sendAndReceive("backend", route, void 0, {
+      const request3 = (route) => sendAndReceive("backend", route, void 0, {
         isLoggingDisabled: true,
         timeoutMs: WORKER_HEARTBEAT_TIMEOUT_MS
       });
       Promise.resolve().then(() => {
         observation?.start();
-        const probe = observation ? Promise.all([request2("resendWorkerStateManagerValuesToMainThread"), observation.value]).then(([, connected]) => connected).catch((error) => {
+        const probe = observation ? Promise.all([request3("resendWorkerStateManagerValuesToMainThread"), observation.value]).then(([, connected]) => connected).catch((error) => {
           if (!live || !stillCurrent() || !isMissingWorkerStateRoute(error)) throw error;
           stateRouteUnavailableFor = stillCurrent;
           observation.dispose();
-          return request2("getWorkerHeartbeat").then(() => void 0);
-        }) : request2("getWorkerHeartbeat").then(() => void 0);
+          return request3("getWorkerHeartbeat").then(() => void 0);
+        }) : request3("getWorkerHeartbeat").then(() => void 0);
         return Promise.race([probe, deadline]);
       }).then((connected) => {
         verified = void 0;
@@ -2505,7 +2505,7 @@ ${button.innerHTML}`)
           return;
         }
         workerFailures.succeeded();
-        if (connected === true && account3 && typeof id === "string" && id.length > 0 && observation?.receivedAt !== void 0) {
+        if (connected === true && account4 && typeof id === "string" && id.length > 0 && observation?.receivedAt !== void 0) {
           verified = { at: observation.receivedAt, stillCurrent };
         }
         if (connected === true) {
@@ -2634,7 +2634,7 @@ ${button.innerHTML}`)
   async function probeFacebook(fetch2) {
     const controller = new AbortController();
     const timer = nativeSetTimeout2(() => controller.abort(), PROBE_TIMEOUT_MS);
-    const request2 = (url, init) => fetch2(url, {
+    const request3 = (url, init) => fetch2(url, {
       cache: "no-store",
       credentials: "omit",
       redirect: "manual",
@@ -2645,11 +2645,11 @@ ${button.innerHTML}`)
       return await new Promise((resolve) => {
         let failures2 = 0;
         const probes = [
-          request2("/favicon.ico", { method: "HEAD" }),
+          request3("/favicon.ico", { method: "HEAD" }),
           // Cross-origin, so no-cors: an opaque response still proves
           // reachability. Fetch rejects no-cors requests that don't follow
           // redirects, so this one does.
-          request2(SECOND_PROBE_URL, { mode: "no-cors", redirect: "follow" })
+          request3(SECOND_PROBE_URL, { mode: "no-cors", redirect: "follow" })
         ];
         for (const probe of probes) {
           probe.then(
@@ -4467,11 +4467,11 @@ ${button.innerHTML}`)
           const data = isRow(item) ? item.custom_template_data : null;
           if (!isRow(data) || data.__typename !== "XMSGXmaCallingTemplateData") continue;
           const state3 = data.call_state;
-          const duration = Number(data.call_duration_sec);
+          const duration2 = Number(data.call_duration_sec);
           return {
             type: data.call_type === "VIDEO" ? "video" : "audio",
             outcome: state3 === "MISSED" ? "missed" : state3 === "ENDED" ? "ended" : state3 === "STARTED" ? "started" : null,
-            durationSec: Number.isFinite(duration) && duration > 0 ? Math.round(duration) : null
+            durationSec: Number.isFinite(duration2) && duration2 > 0 ? Math.round(duration2) : null
           };
         }
       } catch (_) {
@@ -4893,10 +4893,10 @@ ${button.innerHTML}`)
   var reactionEmoji = (row) => (row.querySelector("img[alt]")?.getAttribute("alt") || row.textContent || "").trim();
   var moreRows = (menu) => menu.querySelectorAll('[role="menuitem"]');
   function isOwnSender(senderId) {
-    const account3 = accountId(document.cookie);
+    const account4 = accountId(document.cookie);
     try {
       const i64 = pageRequire()?.("I64");
-      return account3 !== null && senderId != null && String(i64?.to_string?.(senderId)) === account3;
+      return account4 !== null && senderId != null && String(i64?.to_string?.(senderId)) === account4;
     } catch {
       return false;
     }
@@ -5046,9 +5046,9 @@ ${button.innerHTML}`)
   }
   function parsePinnedSnapshot(value) {
     if (!value || typeof value !== "object") return null;
-    const { revision, pins } = value;
-    if (typeof revision !== "number" || !Number.isSafeInteger(revision)) return null;
-    return { revision, pins: parsePinnedChats(pins) };
+    const { revision: revision2, pins } = value;
+    if (typeof revision2 !== "number" || !Number.isSafeInteger(revision2)) return null;
+    return { revision: revision2, pins: parsePinnedChats(pins) };
   }
   function withPin(list, chat) {
     if (!THREAD_ID_RE.test(chat.id) || list.length >= MAX_PINNED_CHATS) return list;
@@ -5088,7 +5088,7 @@ ${button.innerHTML}`)
       }
     };
   }
-  function createPinnedChatsSync(store, request2) {
+  function createPinnedChatsSync(store, request3) {
     let latest = null;
     const unconfirmed = [];
     let sending = false;
@@ -5098,7 +5098,7 @@ ${button.innerHTML}`)
     };
     return {
       async refresh() {
-        show(await request2());
+        show(await request3());
       },
       async change(change) {
         const list = store.getSnapshot();
@@ -5112,13 +5112,13 @@ ${button.innerHTML}`)
         try {
           while (unconfirmed[0] || resync) {
             if (unconfirmed[0]) {
-              const snapshot = await request2(unconfirmed[0]);
+              const snapshot = await request3(unconfirmed[0]);
               unconfirmed.shift();
               if (!snapshot) resync = true;
               show(snapshot);
             } else {
               resync = false;
-              show(await request2());
+              show(await request3());
             }
           }
         } finally {
@@ -6057,7 +6057,7 @@ ${button.innerHTML}`)
         rectOf(message ? messageTextBlock(message) ?? message : target)
       ) : null;
       menuRequest += 1;
-      const request2 = menuRequest;
+      const request3 = menuRequest;
       const readAbandonably = async (read) => {
         nativeReflectApply3(nativeAddEventListener2, document, ["pointerdown", abandonMenu, true]);
         nativeReflectApply3(nativeAddEventListener2, document, ["keydown", abandonMenu, true]);
@@ -6071,7 +6071,7 @@ ${button.innerHTML}`)
       if (conversation) {
         const href = conversation.getAttribute("href") ?? "";
         const actions = await readAbandonably(() => readChatRowActions(conversation));
-        if (request2 !== menuRequest) return;
+        if (request3 !== menuRequest) return;
         const threadId = threadIdFromHref(href);
         if (threadId && isChatPinned(threadId)) {
           addItem([CHAT_PIN_CONTEXT_MENU_KEYS[1], () => setChatPinned(threadId, "", false)]);
@@ -6100,7 +6100,7 @@ ${button.innerHTML}`)
       }
       if (message) {
         const offer = await readAbandonably(() => readMessageOffer(message));
-        if (request2 !== menuRequest) return;
+        if (request3 !== menuRequest) return;
         for (let index = 0; index < offer.reactions.length; index += 1) {
           const reaction = offer.reactions[index];
           if (reaction)
@@ -6903,8 +6903,8 @@ ${button.innerHTML}`)
     const provider = function ChatpaneNicknameProvider(props) {
       const mode = useSyncExternalStore(preference.subscribe, preference.getSnapshot);
       const group = context2 && useContext ? useContext(context2) : void 0;
-      const enabled2 = showNicknames(mode, group);
-      if (!enabled2 && props && typeof props === "object") {
+      const enabled3 = showNicknames(mode, group);
+      if (!enabled3 && props && typeof props === "object") {
         const record4 = props;
         const contact = record4.contact;
         if (typeof record4.nickname === "string" && contact && typeof contact === "object" && typeof contact.name === "string") {
@@ -7156,11 +7156,11 @@ ${button.innerHTML}`)
   function addressedGroupSender(title, group, templates) {
     if (!group?.isGroup || !group.title) return void 0;
     for (const template of templates) {
-      const [before, after, ...extra] = template.split("{threadName}").join(group.title).split("{senderName}");
-      if (before === void 0 || after === void 0 || extra.length) continue;
-      if (title.length <= before.length + after.length) continue;
-      if (!title.startsWith(before) || !title.endsWith(after)) continue;
-      const sender = title.slice(before.length, title.length - after.length);
+      const [before2, after, ...extra] = template.split("{threadName}").join(group.title).split("{senderName}");
+      if (before2 === void 0 || after === void 0 || extra.length) continue;
+      if (title.length <= before2.length + after.length) continue;
+      if (!title.startsWith(before2) || !title.endsWith(after)) continue;
+      const sender = title.slice(before2.length, title.length - after.length);
       const person = namedParticipant(sender, group);
       if (person) return person;
     }
@@ -7270,18 +7270,18 @@ ${button.innerHTML}`)
       return "";
     }
   }
-  function communicationSender(title, body, group, account3, showNicknames2, titleKind, groupTitle = "", photo = false) {
-    if (!group || !account3) return void 0;
+  function communicationSender(title, body, group, account4, showNicknames2, titleKind, groupTitle = "", photo = false) {
+    if (!group || !account4) return void 0;
     const display = (person2) => showNicknames2 && person2.nickname || person2.name;
     if (!group.isGroup) {
-      const others = group.participants.filter((person3) => person3.id && person3.id !== account3);
+      const others = group.participants.filter((person3) => person3.id && person3.id !== account4);
       const person2 = others.length === 1 ? others[0] : void 0;
       return person2?.id ? { id: person2.id, name: display(person2), group: "", photo: true } : void 0;
     }
     const kind = titleKind === "unknown" && group.title ? normalizeSenderName(title) === normalizeSenderName(group.title) ? "group" : "sender" : titleKind;
     const person = kind === "sender" ? namedParticipant(title, group) : notificationSenderPrefix(body, group)?.person;
     const name = group.title || groupTitle;
-    if (!person?.id || person.id === account3 || !name) return void 0;
+    if (!person?.id || person.id === account4 || !name) return void 0;
     return { id: person.id, name: display(person), group: name, photo };
   }
 
@@ -7321,13 +7321,13 @@ ${button.innerHTML}`)
     const readNames = (key) => {
       const existing = pending.get(key);
       if (existing) return existing;
-      const request2 = loadNames(key);
-      pending.set(key, request2);
-      void request2.then(
+      const request3 = loadNames(key);
+      pending.set(key, request3);
+      void request3.then(
         () => pending.delete(key),
         () => pending.delete(key)
       );
-      return request2;
+      return request3;
     };
     const hook = function useChatpaneReplyAttribution(...args) {
       const text2 = Reflect.apply(original, this, args);
@@ -8326,6 +8326,453 @@ ${button.innerHTML}`)
     });
   }
 
+  // inject/src/messenger/lib/unsent-messages.ts
+  var KINDS = /* @__PURE__ */ new Set(["image", "video", "audio", "file", "link", "sticker", "other"]);
+  var MAX_ATTACHMENTS = 20;
+  var ATTACHMENT_TYPES = {
+    1: "sticker",
+    2: "image",
+    3: "image",
+    4: "video",
+    5: "audio",
+    6: "file",
+    7: "link",
+    8: "image",
+    9: "video",
+    10: "sticker",
+    12: "audio",
+    15: "sticker"
+  };
+  var MESSAGES_TABLE = 12;
+  var ATTACHMENTS_TABLE = 16;
+  var REVOKED = "Revoked";
+  var PAIR_WINDOW_MS = 3e4;
+  var isRow2 = (value) => !!value && typeof value === "object";
+  function attachmentOf(row, options) {
+    const plain = (value) => revealText(value, options.unvault).text;
+    const mime = plain(row.playableUrlMimeType) ?? plain(row.previewUrlMimeType);
+    const type = Number(i64Text(row.attachmentType, options.i64ToText));
+    const filename = plain(row.filename);
+    let kind = mime?.startsWith("image/") ? "image" : mime?.startsWith("video/") ? "video" : mime?.startsWith("audio/") ? "audio" : ATTACHMENT_TYPES[type] ?? (row.hasXma === true ? "link" : filename ? "file" : "other");
+    const title = plain(row.titleText);
+    if (kind === "link") {
+      if (!title && !plain(row.actionUrl)) return null;
+    } else if (filename && kind === "other") {
+      kind = "file";
+    }
+    const duration2 = Number(i64Text(row.playableDurationMs, options.i64ToText));
+    return {
+      kind,
+      name: (kind === "link" ? title : filename) ?? null,
+      durationMs: (kind === "audio" || kind === "video") && Number.isFinite(duration2) && duration2 > 0 ? duration2 : null
+    };
+  }
+  function copyFromRow(row, attachments, id, options) {
+    if (!isRow2(row) || row.isAdminMessage === true || row.isUnsent === true) return null;
+    const thread2 = i64Text(row.threadKey, options.i64ToText);
+    const sender = i64Text(row.senderId, options.i64ToText);
+    const sent = Number(i64Text(row.timestampMs, options.i64ToText));
+    if (!thread2 || !sender || sender === options.account || !(sent > 0) || !id) return null;
+    const text2 = revealText(row.text, options.unvault).text;
+    const kept = attachments.filter(isRow2).map((attachment) => attachmentOf(attachment, options)).filter((attachment) => attachment !== null).slice(0, MAX_ATTACHMENTS);
+    const sticker = i64Text(row.stickerId, options.i64ToText);
+    if (sticker && sticker !== "0" && !kept.some((attachment) => attachment.kind === "sticker")) {
+      kept.push({ kind: "sticker", name: null, durationMs: null });
+    }
+    if (!text2 && kept.length === 0) return null;
+    return { id, thread: thread2, sender, sentMs: sent, text: text2, attachments: kept };
+  }
+  function parseCopies(data) {
+    const list = isRow2(data) && Array.isArray(data.messages) ? data.messages : [];
+    const copies2 = [];
+    for (const item of list) {
+      if (!isRow2(item) || typeof item.id !== "string" || typeof item.thread !== "string") continue;
+      if (typeof item.sender !== "string" || typeof item.sentMs !== "number") continue;
+      const attachments = (Array.isArray(item.attachments) ? item.attachments : []).filter(isRow2).filter((attachment) => typeof attachment.kind === "string").map((attachment) => ({
+        kind: KINDS.has(attachment.kind) ? attachment.kind : "other",
+        name: typeof attachment.name === "string" ? attachment.name : null,
+        durationMs: typeof attachment.durationMs === "number" ? attachment.durationMs : null
+      }));
+      copies2.push({
+        id: item.id,
+        thread: item.thread,
+        sender: item.sender,
+        sentMs: item.sentMs,
+        text: typeof item.text === "string" ? item.text : null,
+        attachments
+      });
+    }
+    return copies2;
+  }
+  var UnsentCopies = class {
+    constructor() {
+      __publicField(this, "copies", /* @__PURE__ */ new Map());
+      __publicField(this, "listeners", /* @__PURE__ */ new Set());
+      __publicField(this, "subscribe", (listener) => {
+        this.listeners.add(listener);
+        return () => {
+          this.listeners.delete(listener);
+        };
+      });
+      __publicField(this, "get", (id) => typeof id === "string" ? this.copies.get(id) : void 0);
+    }
+    replace(copies2) {
+      this.copies = new Map(copies2.map((copy) => [copy.id, copy]));
+      this.emit();
+    }
+    add(copy) {
+      this.copies = new Map(this.copies).set(copy.id, copy);
+      this.emit();
+    }
+    clear() {
+      if (this.copies.size === 0) return;
+      this.copies = /* @__PURE__ */ new Map();
+      this.emit();
+    }
+    emit() {
+      for (const listener of [...this.listeners]) listener();
+    }
+  };
+  var RevokePairs = class {
+    constructor(now = Date.now) {
+      __publicField(this, "now", now);
+      __publicField(this, "deleted", /* @__PURE__ */ new Map());
+      __publicField(this, "revoked", /* @__PURE__ */ new Map());
+    }
+    /** A thread and a message's sort key (its time in milliseconds). */
+    static key(jid, sortKey) {
+      const time = Number(sortKey);
+      if (typeof jid !== "string" || !jid || !Number.isFinite(time) || time <= 0) return null;
+      return `${jid}
+${time}`;
+    }
+    /** A row was deleted; the copy to keep if a Revoked message pairs with it. */
+    deletedRow(key, copy) {
+      const id = this.take(this.revoked, key);
+      if (id !== void 0) return id === null ? null : { ...copy, id };
+      this.wait(this.deleted, key, copy);
+      return null;
+    }
+    /** A Revoked message arrived as row `id`; the copy to keep if one waits. */
+    revokedMessage(key, id) {
+      const copy = this.take(this.deleted, key);
+      if (copy !== void 0) return copy === null ? null : { ...copy, id };
+      this.wait(this.revoked, key, id);
+      return null;
+    }
+    /** The other side waiting under `key`; an ambiguous one stays to the end. */
+    take(map, key) {
+      const now = this.now();
+      for (const side of [this.deleted, this.revoked]) {
+        for (const [waiting, entry2] of side) if (entry2.until <= now) side.delete(waiting);
+      }
+      const entry = map.get(key);
+      if (entry?.value) map.delete(key);
+      return entry?.value;
+    }
+    wait(map, key, value) {
+      map.set(key, { value: map.has(key) ? null : value, until: this.now() + PAIR_WINDOW_MS });
+    }
+  };
+  function isContext(value) {
+    const context2 = value;
+    return !!context2 && typeof context2.forEach === "function" && typeof context2.db?.table === "function";
+  }
+  function wrapMessageProcedure(procedure, hooks) {
+    const wrapped3 = sameArity(function(...args) {
+      const run = () => Reflect.apply(procedure, this, args);
+      const context2 = args[args.length - 1];
+      if (args[17] !== true || !hooks.enabled() || !isContext(context2)) return run();
+      let read;
+      try {
+        const messages = context2.db.table(MESSAGES_TABLE);
+        const found = messages.fetch([[[args[9]]], "optimistic"]).next();
+        read = found.then((step) => {
+          const row = step.done ? null : step.value?.item;
+          if (!isRow2(row) || row.isUnsent === true || row.messageId !== args[8]) return;
+          const attachments = [];
+          return context2.forEach(
+            context2.db.table(ATTACHMENTS_TABLE).fetch([[[row.threadKey, row.timestampMs, row.messageId]], "fk_messages"]),
+            (entry) => {
+              attachments.push(entry?.item);
+            }
+          ).then(() => {
+            try {
+              const copy = copyFromRow(row, attachments, row.messageId, hooks.options());
+              if (copy) hooks.keep(copy);
+            } catch (error) {
+              hooks.onError(error);
+            }
+          });
+        });
+      } catch (error) {
+        hooks.onError(error);
+        return run();
+      }
+      return read.then(run, (error) => {
+        hooks.onError(error);
+        return run();
+      });
+    }, procedure);
+    for (const key of ["__sproc_name__", "__tables__"]) {
+      if (key in procedure) wrapped3[key] = procedure[key];
+    }
+    return wrapped3;
+  }
+  async function readRow(transaction, id) {
+    const queries = pageRequire()?.("ReQL");
+    if (typeof id !== "string" || typeof queries?.firstAsync !== "function") return null;
+    const row = await queries.firstAsync(
+      queries.fromTableAscending(transaction.messages.index("messageId")).getKeyRange(id)
+    );
+    if (!isRow2(row)) return null;
+    return [row, await readAttachments(transaction, row, queries)];
+  }
+  async function readAttachments(transaction, row, queries) {
+    const reql = queries ?? pageRequire()?.("ReQL");
+    const found = await reql?.toArrayAsync(
+      reql.fromTableAscending(transaction.attachments).getKeyRange(row.threadKey, row.messageId)
+    );
+    return Array.isArray(found) ? found : [];
+  }
+  function before(exports, name, observe, hooks) {
+    const method2 = exports[name];
+    if (typeof method2 !== "function") return false;
+    exports[name] = sameArity(async function(...args) {
+      if (hooks.enabled()) {
+        try {
+          await observe(args);
+        } catch (error) {
+          hooks.onError(error);
+        }
+      }
+      return Reflect.apply(method2, this, args);
+    }, method2);
+    return true;
+  }
+  function encryptedChatHooks(hooks, pairs = new RevokePairs()) {
+    const revoked = (message) => {
+      if (!isRow2(message) || message.type_ !== REVOKED || message.isAuthorMe === true) return;
+      const key = RevokePairs.key(message.chatJid, message.sortOrderMs);
+      if (!key || typeof message.msgId !== "string") return;
+      const copy = pairs.revokedMessage(key, message.msgId);
+      if (copy) hooks.keep(copy);
+    };
+    return {
+      /** MAWBridgeDeleteMessagesHandler: hold each deleted row for its pair. */
+      patchDelete(exports) {
+        return before(
+          exports,
+          "call",
+          async ([transaction, event]) => {
+            if (!isRow2(event) || !Array.isArray(event.messages)) return;
+            if (typeof event.threadJid !== "string") return;
+            for (const item of event.messages) {
+              const found = isRow2(item) ? await readRow(transaction, item.msgId) : null;
+              if (!found) continue;
+              const [row, attachments] = found;
+              const copy = copyFromRow(row, attachments, row.messageId, hooks.options());
+              const sortKey = i64Text(row.primarySortKey, hooks.options().i64ToText);
+              const key = copy && RevokePairs.key(event.threadJid, sortKey);
+              const paired = key && pairs.deletedRow(key, copy);
+              if (paired) hooks.keep(paired);
+            }
+          },
+          hooks
+        );
+      },
+      /** MAWBridgeNewMsgHandler: a Revoked message names the notice's row. */
+      patchNew(exports) {
+        const single = async ([, message]) => revoked(message);
+        const one = before(exports, "call", single, hooks);
+        const unwaited = before(exports, "callWithoutWaitingForAnything", single, hooks);
+        const bulk = before(
+          exports,
+          "bulkCall",
+          async ([, messages]) => {
+            if (Array.isArray(messages)) for (const message of messages) revoked(message);
+          },
+          hooks
+        );
+        return one || unwaited || bulk;
+      },
+      /** MAWUpdateMsg: a Revoked update turns the existing row into the notice. */
+      patchUpdate(exports) {
+        return before(
+          exports,
+          "call",
+          async ([transaction, message, existing]) => {
+            if (!isRow2(message) || message.type_ !== REVOKED || message.isAuthorMe === true) return;
+            if (!isRow2(existing) || typeof existing.messageId !== "string") return;
+            const attachments = await readAttachments(transaction, existing);
+            const copy = copyFromRow(existing, attachments, existing.messageId, hooks.options());
+            if (copy) hooks.keep(copy);
+          },
+          hooks
+        );
+      }
+    };
+  }
+  function wrapUnsentNoticeFactory(factory, copies2, view) {
+    return wrapFactoryExports(factory, (exports) => {
+      const Notice = exports.MWV2ChatUnsentMessage;
+      if (typeof Notice !== "function") return false;
+      function ChatpaneUnsentMessage(props) {
+        const react2 = pageRequire()?.("react");
+        const message = isRow2(props?.message) ? props.message : null;
+        const notice = react2?.createElement(Notice, props);
+        if (!react2 || typeof react2.useSyncExternalStore !== "function") return notice ?? null;
+        const copy = react2.useSyncExternalStore(
+          copies2.subscribe,
+          () => copies2.get(message?.messageId)
+        );
+        if (!copy || props.outgoing === true) return notice;
+        let shown = null;
+        try {
+          shown = view.render(react2, copy);
+        } catch (error) {
+          view.onError(error);
+        }
+        return react2.createElement(react2.Fragment, null, notice, shown);
+      }
+      exports.MWV2ChatUnsentMessage = ChatpaneUnsentMessage;
+      return true;
+    });
+  }
+
+  // inject/src/messenger/features/unsent-messages.ts
+  var CHANGED_EVENT2 = "chatpane:unsent-messages-changed";
+  var MESSAGE_PROCEDURES = /* @__PURE__ */ new Set(["LSUpsertMessage", "LSDeleteThenInsertMessage"]);
+  var copies = new UnsentCopies();
+  var account2 = null;
+  var revision = 0;
+  function enabled2() {
+    return account2 !== null && window.__CHATPANE_SETTINGS__?.recover_unsent_messages === true;
+  }
+  function readOptions() {
+    const load = pageRequire();
+    const options = { account: account2 };
+    try {
+      const i64 = load?.("I64");
+      const toText = i64?.to_string;
+      if (typeof toText === "function") options.i64ToText = (value) => toText.call(i64, value);
+    } catch (_) {
+    }
+    try {
+      const vault = load?.("MAWVault");
+      const unvault = vault?.unvault;
+      if (typeof unvault === "function") options.unvault = (value) => unvault.call(vault, value);
+    } catch (_) {
+    }
+    return options;
+  }
+  async function request2(change) {
+    const owner = account2;
+    if (!owner || typeof chatpaneUnsentMessages !== "function") return;
+    try {
+      const data = await chatpaneUnsentMessages(
+        change ? { account: owner, op: "add", message: change } : { account: owner, op: "list" }
+      );
+      const answer = data;
+      if (owner !== account2 || answer?.error === true) return;
+      const answered = Number(answer?.revision);
+      if (!(answered >= revision)) return;
+      revision = answered;
+      if (enabled2()) copies.replace(parseCopies(data));
+      else copies.clear();
+    } catch (_) {
+      diag("unsent.sync", "request failed");
+    }
+  }
+  function keep(copy) {
+    if (!enabled2()) return;
+    copies.add(copy);
+    void request2(copy);
+  }
+  var ATTACHMENT_LABELS = {
+    image: () => t("page.unsent.photo"),
+    video: () => t("page.unsent.video"),
+    audio: () => t("page.unsent.audio"),
+    file: () => t("page.unsent.file"),
+    link: () => t("page.unsent.link"),
+    sticker: () => t("page.unsent.sticker"),
+    other: () => t("page.unsent.attachment")
+  };
+  function duration(ms) {
+    const seconds = Math.round(ms / 1e3);
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+  function attachmentLabel(attachment) {
+    const kind = ATTACHMENT_LABELS[attachment.kind]();
+    const name = attachment.name ?? (attachment.durationMs ? duration(attachment.durationMs) : null);
+    return name ? t("page.unsent.attachment_named", { kind, name }) : kind;
+  }
+  function renderCopy(react2, copy) {
+    const h = react2.createElement;
+    return h(
+      "div",
+      { className: "chatpane-unsent-copy", role: "note", "data-chatpane-unsent-copy": "" },
+      h("div", { className: "chatpane-unsent-label", ...language() }, t("page.unsent.kept")),
+      copy.text ? h("div", { className: "chatpane-unsent-text", dir: "auto" }, copy.text) : null,
+      ...copy.attachments.map(
+        (attachment, index) => h(
+          "div",
+          { key: index, className: "chatpane-unsent-attachment", dir: "auto" },
+          attachmentLabel(attachment)
+        )
+      )
+    );
+  }
+  function reportError(error) {
+    diag("unsent.capture", error instanceof Error ? error.name : "failed");
+  }
+  function interceptUnsentMessageModules(define) {
+    const hooks = { enabled: enabled2, options: readOptions, keep, onError: reportError };
+    const encrypted = encryptedChatHooks(hooks);
+    const patches = {
+      MAWBridgeDeleteMessagesHandler: encrypted.patchDelete,
+      MAWBridgeNewMsgHandler: encrypted.patchNew,
+      MAWUpdateMsg: encrypted.patchUpdate
+    };
+    return new Proxy(define, {
+      apply(target, thisArg, args) {
+        const name = args[0];
+        const factory = args[2];
+        if (typeof name === "string" && typeof factory === "function") {
+          if (MESSAGE_PROCEDURES.has(name)) {
+            args[2] = wrapFactoryExports(factory, (module) => {
+              if (typeof module.exports !== "function") return false;
+              module.exports = wrapMessageProcedure(module.exports, hooks);
+              return true;
+            });
+          } else if (patches[name]) {
+            args[2] = wrapFactoryExports(factory, patches[name]);
+          } else if (name === "MWV2ChatUnsentMessage.react") {
+            args[2] = wrapUnsentNoticeFactory(factory, copies, {
+              render: renderCopy,
+              onError: (error) => diag("unsent.render", error instanceof Error ? error.name : "render failed")
+            });
+          }
+        }
+        return Reflect.apply(target, thisArg, args);
+      }
+    });
+  }
+  function initUnsentMessages() {
+    if (!window.__TAURI_INTERNALS__) return;
+    account2 = accountId(document.cookie);
+    if (!account2) return;
+    let wasEnabled = enabled2();
+    window.addEventListener(CHANGED_EVENT2, () => void (enabled2() ? request2() : copies.clear()));
+    window.addEventListener("chatpane:settings", () => {
+      if (enabled2() === wasEnabled) return;
+      wasEnabled = enabled2();
+      if (wasEnabled) void request2();
+      else copies.clear();
+    });
+    if (wasEnabled) void request2();
+  }
+
   // inject/src/messenger/features/facebook-modules.ts
   var SEARCH_INDEX_WAKE_MS = 5 * 6e4;
   function initFacebookModuleInterception() {
@@ -8373,8 +8820,10 @@ ${button.innerHTML}`)
       const wrapped3 = interceptOnce(
         value,
         (define) => createFacebookModuleDefineInterceptor(
-          interceptPinnedChatModules(
-            interceptNotificationModules(interceptErrorBlock(interceptSoundModules(define)))
+          interceptUnsentMessageModules(
+            interceptPinnedChatModules(
+              interceptNotificationModules(interceptErrorBlock(interceptSoundModules(define)))
+            )
           ),
           shouldBlockTelemetry,
           (restore2) => searchIndex.register(restore2),
@@ -8587,10 +9036,10 @@ ${button.innerHTML}`)
     for (const name of sorted) {
       for (let from = text2.indexOf(name); from !== -1; from = text2.indexOf(name, from + 1)) {
         const to = from + name.length;
-        const before = [...text2.slice(Math.max(0, from - 2), from)].pop();
+        const before2 = [...text2.slice(Math.max(0, from - 2), from)].pop();
         const after = [...text2.slice(to, to + 2)][0];
         const letters = [...name];
-        if (!nameEdge(before, letters[0]) || !nameEdge(after, letters[letters.length - 1]))
+        if (!nameEdge(before2, letters[0]) || !nameEdge(after, letters[letters.length - 1]))
           continue;
         if (ranges.some(([start, end]) => from < end && to > start)) continue;
         ranges.push([from, to]);
@@ -9616,8 +10065,8 @@ ${button.innerHTML}`)
 
   // inject/src/messenger/lib/media-autoplay.ts
   var MEDIA_ACTIVATION_GRACE_MS = 1500;
-  function shouldSuppressMediaPlay(enabled2, lastActivationAt, now, graceMs = MEDIA_ACTIVATION_GRACE_MS) {
-    if (!enabled2) return false;
+  function shouldSuppressMediaPlay(enabled3, lastActivationAt, now, graceMs = MEDIA_ACTIVATION_GRACE_MS) {
+    if (!enabled3) return false;
     if (!Number.isFinite(lastActivationAt) || !Number.isFinite(now) || !Number.isFinite(graceMs) || graceMs < 0 || lastActivationAt > now) {
       return true;
     }
@@ -9680,15 +10129,15 @@ ${button.innerHTML}`)
       observer?.disconnect();
       observer = null;
     };
-    let enabled2 = false;
+    let enabled3 = false;
     const apply2 = () => {
       if (on2()) {
         start();
-        if (!enabled2) scan(document, true);
+        if (!enabled3) scan(document, true);
       } else {
         stop();
       }
-      enabled2 = on2();
+      enabled3 = on2();
     };
     apply2();
     window.addEventListener("chatpane:settings", apply2);
@@ -10156,10 +10605,10 @@ ${button.innerHTML}`)
     let lastActive = null;
     let unavailableReported = false;
     const refresh = () => {
-      const account3 = accountId(document.cookie);
-      if (reading || !account3) return;
+      const account4 = accountId(document.cookie);
+      if (reading || !account4) return;
       reading = true;
-      readMessengerDndUntil(account3, window.require).then((until) => {
+      readMessengerDndUntil(account4, window.require).then((until) => {
         if (until === null) {
           if (!unavailableReported) {
             diag("notify.messenger-dnd-unreadable", "Do Not Disturb unreadable");
@@ -10186,10 +10635,10 @@ ${button.innerHTML}`)
   // inject/src/messenger/lib/action-target.ts
   function actionTargetFor(value, cookie) {
     if (typeof value !== "object" || value === null) return null;
-    const { account: account3, message = "", reaction = "" } = value;
-    if (typeof account3 !== "string" || typeof message !== "string" || typeof reaction !== "string")
+    const { account: account4, message = "", reaction = "" } = value;
+    if (typeof account4 !== "string" || typeof message !== "string" || typeof reaction !== "string")
       return null;
-    return account3 !== "" && account3 === accountId(cookie) ? { account: account3, message, reaction } : null;
+    return account4 !== "" && account4 === accountId(cookie) ? { account: account4, message, reaction } : null;
   }
 
   // inject/src/messenger/lib/notification-actions.ts
@@ -10270,11 +10719,11 @@ ${button.innerHTML}`)
       await wait(200);
     }
   }
-  async function reactToMessage(load, request2) {
+  async function reactToMessage(load, request3) {
     const { db, i64 } = await database(load);
     const message = record3(
       await db.runInTransaction(
-        (tx) => tx.messages.index("messageId").get(request2.messageId),
+        (tx) => tx.messages.index("messageId").get(request3.messageId),
         "readonly",
         void 0,
         void 0,
@@ -10283,9 +10732,9 @@ ${button.innerHTML}`)
     );
     if (!message) return "message-missing";
     const threadKey = message.threadKey;
-    if (String(i64.to_string(threadKey)) !== request2.threadId) return "thread-mismatch";
+    if (String(i64.to_string(threadKey)) !== request3.threadId) return "thread-mismatch";
     const sender = String(i64.to_string(message.senderId));
-    if (sender === request2.account) return "own-message";
+    if (sender === request3.account) return "own-message";
     const thread2 = record3(await db.tables.threads.get(threadKey));
     if (!thread2) return "thread-missing";
     const types = load("LSMessagingThreadTypeUtil");
@@ -10300,7 +10749,7 @@ ${button.innerHTML}`)
         load,
         "MAWDbMsg",
         "toMsgId"
-      )(request2.messageId);
+      )(request3.messageId);
       if (!msgId) return "message-id";
       const ready2 = await exported(load, "MAWMiActOnActThreadReady", "waitForACTThreadReady")(db.tables, threadKey, TRACE);
       const protocolId = await exported(
@@ -10309,7 +10758,7 @@ ${button.innerHTML}`)
         "getProtocolMsgIdByMsgIdUI"
       )(msgId);
       if (!ready2?.chatJid || !protocolId) return "protocol-id";
-      if (Date.now() >= request2.deadline) return "expired";
+      if (Date.now() >= request3.deadline) return "expired";
       let qplEventType;
       try {
         qplEventType = exported(
@@ -10323,7 +10772,7 @@ ${button.innerHTML}`)
         args: {
           groupIndex: void 0,
           groupingKey: "",
-          reaction: request2.reaction,
+          reaction: request3.reaction,
           reactToAuthor: sender,
           reactToProtocolMsgId: protocolId,
           source
@@ -10341,7 +10790,7 @@ ${button.innerHTML}`)
       "isReactionsV2Enabled"
     );
     if (v2(thread2)) return "reactions-v2";
-    const actorId = i64.of_string(request2.account);
+    const actorId = i64.of_string(request3.account);
     const mine = record3(
       await db.runInTransaction(
         (tx) => tx.reactions.get(threadKey, message.messageId, actorId),
@@ -10351,7 +10800,7 @@ ${button.innerHTML}`)
         TRACE
       )
     );
-    if (mine?.reaction === request2.reaction) return "ok";
+    if (mine?.reaction === request3.reaction) return "ok";
     const factory = exported(load, "LSFactory");
     const upsert = exported(
       load,
@@ -10359,11 +10808,11 @@ ${button.innerHTML}`)
     );
     return db.runInTransaction(
       async (tx) => {
-        if (Date.now() >= request2.deadline) return "expired";
+        if (Date.now() >= request3.deadline) return "expired";
         await upsert(factory(tx), {
           actorId,
           messageId: message.messageId,
-          reaction: request2.reaction,
+          reaction: request3.reaction,
           sendAttribution: source,
           threadKey,
           timestampMs: i64.of_float(Date.now())
@@ -11618,8 +12067,8 @@ ${button.innerHTML}`)
      * watching began and not caught up late (after sleep), and not announced
      * already. Whose message it reacts to is for the caller to check.
      */
-    first(reaction, account3, now) {
-      if (reaction.actor === account3 || reaction.at === null || reaction.at < this.since) {
+    first(reaction, account4, now) {
+      if (reaction.actor === account4 || reaction.at === null || reaction.at < this.since) {
         return false;
       }
       if (isOldNews(reaction.at, now, null)) return false;
@@ -11952,9 +12401,9 @@ ${button.innerHTML}`)
         const announcements = new ReactionAnnouncements(now());
         reactions.subscribe((_event, change) => {
           const reaction = changedReaction(change, load);
-          const account3 = accountId(document.cookie);
-          if (!reaction || !account3 || !announcements.first(reaction, account3, now())) return;
-          ownMessageText(db, load, reaction, account3).then((text2) => {
+          const account4 = accountId(document.cookie);
+          if (!reaction || !account4 || !announcements.first(reaction, account4, now())) return;
+          ownMessageText(db, load, reaction, account4).then((text2) => {
             if (text2 !== void 0) announce(reaction, text2);
           }).catch(() => {
           });
@@ -11962,7 +12411,7 @@ ${button.innerHTML}`)
       }).catch(() => diag("notify.reactions", "Messenger's reaction APIs did not load"));
     }, 1e3);
   }
-  async function ownMessageText(db, load, reaction, account3) {
+  async function ownMessageText(db, load, reaction, account4) {
     const message = await db.runInTransaction?.(
       (tx) => tx.messages.index("messageId").get(reaction.message),
       "readonly",
@@ -11973,7 +12422,7 @@ ${button.innerHTML}`)
     if (!message || typeof message !== "object") return void 0;
     const row = message;
     if (messageThreadId(row, load) !== reaction.thread) return void 0;
-    if (pageId(row.senderId, load) !== account3) return void 0;
+    if (pageId(row.senderId, load) !== account4) return void 0;
     let unvault;
     try {
       const vault = load("MAWVault");
@@ -14447,7 +14896,7 @@ ${text2}`)) {
   }
 
   // inject/src/messenger/features/scheduled-send.ts
-  var account2 = () => accountScopedStorageKey("schedule", document.cookie)?.split(":")[1] ?? null;
+  var account3 = () => accountScopedStorageKey("schedule", document.cookie)?.split(":")[1] ?? null;
   var thread = () => {
     const id = threadIdFromHref(location.pathname);
     return id ? `/t/${id}/` : null;
@@ -14480,7 +14929,7 @@ ${text2}`)) {
     return !routeChanged && loadedThread === thread() ? loadedThread : null;
   };
   async function deliverScheduledMessage(message, connectionReady = ready) {
-    if (!connectionReady() || account2() !== message.account || sendWindow(message.due, Date.now()) !== "due")
+    if (!connectionReady() || account3() !== message.account || sendWindow(message.due, Date.now()) !== "due")
       return "defer";
     const existing = findComposer();
     if (existing && (composerText(existing).trim() || hasComposerMedia(existing))) return "defer";
@@ -14507,7 +14956,7 @@ ${text2}`)) {
     document.addEventListener("keydown", onInput, true);
     try {
       while (Date.now() <= deadline) {
-        if (interrupted || account2() !== message.account || !connectionReady()) break;
+        if (interrupted || account3() !== message.account || !connectionReady()) break;
         const current2 = findComposer();
         if (thread() !== message.thread) {
           if (inserted) break;
@@ -14535,13 +14984,13 @@ ${text2}`)) {
           await pause3();
           continue;
         }
-        if (Date.now() > message.due + SEND_GRACE_MS || account2() !== message.account || !connectionReady())
+        if (Date.now() > message.due + SEND_GRACE_MS || account3() !== message.account || !connectionReady())
           break;
         clicked = true;
         send.click();
         const confirmUntil = Date.now() + 5e3;
         while (Date.now() < confirmUntil) {
-          if (thread() !== message.thread || account2() !== message.account || !box.isConnected)
+          if (thread() !== message.thread || account3() !== message.account || !box.isConnected)
             return "uncertain";
           if (!composerText(box).trim()) return "sent";
           await pause3();
@@ -14551,7 +15000,7 @@ ${text2}`)) {
     } finally {
       document.removeEventListener("pointerdown", onInput, true);
       document.removeEventListener("keydown", onInput, true);
-      if (!clicked && inserted && box?.isConnected && thread() === message.thread && account2() === message.account && composerText(box) === message.text)
+      if (!clicked && inserted && box?.isConnected && thread() === message.thread && account3() === message.account && composerText(box) === message.text)
         cleared = replaceComposerText(box, "");
     }
     if (clicked) return "uncertain";
@@ -14628,11 +15077,11 @@ ${text2}`)) {
       button?.setAttribute("aria-expanded", "false");
       if (focus) button?.focus();
     };
-    const request2 = async (operation) => {
-      const current2 = account2();
+    const request3 = async (operation) => {
+      const current2 = account3();
       if (!current2) throw new Error(t("page.schedule.sign_in"));
       const response = await chatpaneScheduledSend({ ...operation, account: current2 });
-      if (account2() !== current2) throw new Error(t("page.schedule.account_changed"));
+      if (account3() !== current2) throw new Error(t("page.schedule.account_changed"));
       if (response.error) throw new Error(response.error);
       owner = current2;
       rows = response.items;
@@ -14655,7 +15104,7 @@ ${text2}`)) {
         void 0,
         { warning: true }
       );
-      for (const row of missed) await request2({ op: "seen", id: row.id });
+      for (const row of missed) await request3({ op: "seen", id: row.id });
     };
     const positionPanel = () => {
       if (!panel || !button) return;
@@ -14675,7 +15124,7 @@ ${text2}`)) {
     };
     const save = async (due) => {
       if (busy2) return;
-      const current2 = account2();
+      const current2 = account3();
       if (!current2 || current2 !== owner || thread() !== panelThread) {
         close();
         return;
@@ -14708,7 +15157,7 @@ ${text2}`)) {
       try {
         let result;
         try {
-          result = await request2({
+          result = await request3({
             op: "save",
             ...editingItem ? { id: editingItem.id } : {},
             thread: editingItem?.thread ?? expectedThread ?? void 0,
@@ -14719,7 +15168,7 @@ ${text2}`)) {
           if (!editingItem || recoveredDraft) throw error;
           let saved;
           try {
-            saved = (await request2({ op: "list" })).items.find((row) => row.id === editingItem.id);
+            saved = (await request3({ op: "list" })).items.find((row) => row.id === editingItem.id);
           } catch {
           }
           if (saved?.status !== "scheduled" || saved.account !== current2 || saved.thread !== editingItem.thread || saved.text !== text2 || saved.due !== due) {
@@ -14737,12 +15186,12 @@ ${text2}`)) {
         if (!result.saved) throw new Error(t("page.schedule.not_saved"));
         if (!editingItem || recoveredDraft) {
           const textToClear = recoveredDraft ? editingItem?.text ?? "" : expectedText;
-          const unchanged = expectedBox?.isConnected && thread() === expectedThread && account2() === current2 && composerText(expectedBox) === textToClear && !hasComposerMedia(expectedBox);
+          const unchanged = expectedBox?.isConnected && thread() === expectedThread && account3() === current2 && composerText(expectedBox) === textToClear && !hasComposerMedia(expectedBox);
           if (!unchanged || !expectedBox) {
-            if (!editingItem) await request2({ op: "cancel", id: result.saved });
+            if (!editingItem) await request3({ op: "cancel", id: result.saved });
             throw new Error(t("page.schedule.draft_changed"));
           }
-          const sameComposer = () => expectedBox.isConnected && findComposer() === expectedBox && thread() === expectedThread && account2() === current2 && !hasComposerMedia(expectedBox);
+          const sameComposer = () => expectedBox.isConnected && findComposer() === expectedBox && thread() === expectedThread && account3() === current2 && !hasComposerMedia(expectedBox);
           replaceComposerText(expectedBox, "");
           for (let attempt = 0; attempt < 10; attempt++) {
             await pause3();
@@ -14755,11 +15204,11 @@ ${text2}`)) {
         }
         if (!editingItem || recoveredDraft) {
           try {
-            await request2({ op: "arm", id: result.saved });
+            await request3({ op: "arm", id: result.saved });
           } catch (error) {
             let status;
             try {
-              status = (await request2({ op: "list" })).items.find(
+              status = (await request3({ op: "list" })).items.find(
                 (row) => row.id === result.saved
               )?.status;
             } catch {
@@ -14940,7 +15389,7 @@ ${text2}`)) {
         if (row.status !== "sending")
           actions.append(
             action(t("page.schedule.cancel"), () => {
-              void request2({ op: "cancel", id: row.id }).then(() => {
+              void request3({ op: "cancel", id: row.id }).then(() => {
                 if (page2 === "list") show("list");
               }).catch(failed);
             })
@@ -14981,7 +15430,7 @@ ${text2}`)) {
       sourceText = composerText(box);
       panelThread = thread();
       try {
-        await request2({ op: "list" });
+        await request3({ op: "list" });
       } catch (error) {
         failed(error);
         return;
@@ -15000,7 +15449,7 @@ ${text2}`)) {
       const box = cachedBox?.isConnected && isShown(cachedBox) ? cachedBox : findComposer();
       cachedBox = box;
       const region = box && composerRegion(box);
-      if (owner && owner !== account2()) {
+      if (owner && owner !== account3()) {
         rows = [];
         owner = null;
         close();
@@ -15020,10 +15469,10 @@ ${text2}`)) {
         return;
       }
       emoji = nextEmoji;
-      let before = emoji;
-      while (before.parentElement && !before.parentElement.contains(box))
-        before = before.parentElement;
-      const parent = before.parentElement;
+      let before2 = emoji;
+      while (before2.parentElement && !before2.parentElement.contains(box))
+        before2 = before2.parentElement;
+      const parent = before2.parentElement;
       if (!parent || parent === region) {
         button?.remove();
         return;
@@ -15044,18 +15493,18 @@ ${text2}`)) {
         button.title = t("page.schedule.schedule_send");
         button.innerHTML = '<svg viewBox="2 2 20 20" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 4h2v5.4l3.5 2-.9 1.8L11 12.6Z"/></svg>';
       }
-      if (button.parentElement !== parent || button.nextElementSibling !== before)
-        parent.insertBefore(button, before);
+      if (button.parentElement !== parent || button.nextElementSibling !== before2)
+        parent.insertBefore(button, before2);
       button.dataset.queued = String(rows.length > 0);
       button.title = rows.length ? tn("page.schedule.button_saved", rows.length) : t("page.schedule.schedule_send");
       syncColors();
     }
     const poll = async () => {
-      if (polling || busy2 || !account2() || window.__CHATPANE_SCHEDULED_SEND_AVAILABLE__ === false)
+      if (polling || busy2 || !account3() || window.__CHATPANE_SCHEDULED_SEND_AVAILABLE__ === false)
         return;
       polling = true;
       try {
-        await request2({ op: "list" });
+        await request3({ op: "list" });
         await warning();
         while (canDeliver && ready()) {
           const due = nextDueMessage(rows, Date.now());
@@ -15070,7 +15519,7 @@ ${text2}`)) {
               location.href = `https://www.facebook.com/messages${due.thread}`;
               return false;
             }
-            const claimed = await request2({ op: "claim", id: due.id });
+            const claimed = await request3({ op: "claim", id: due.id });
             if (claimed.claimed !== due.id) return false;
             const job = claimed.items.find((row) => row.id === due.id && row.status === "sending");
             if (!job) return false;
@@ -15079,7 +15528,7 @@ ${text2}`)) {
             try {
               outcome = await deliverScheduledMessage(job);
             } finally {
-              if (account2() === job.account) await request2({ op: outcome, id: job.id, due: job.due });
+              if (account3() === job.account) await request3({ op: outcome, id: job.id, due: job.due });
             }
             return outcome !== "defer";
           });
@@ -16630,9 +17079,9 @@ ${text2}`)) {
   var TYPING_LABEL = "3";
   var IS_TYPING = /(is_typing(?:\\)*":)1(?![0-9])/g;
   function clearTyping(text2) {
-    const request2 = parseJson(text2);
-    if (request2?.type !== TYPING_REQUEST) return null;
-    const update = nested(request2, "payload");
+    const request3 = parseJson(text2);
+    if (request3?.type !== TYPING_REQUEST) return null;
+    const update = nested(request3, "payload");
     if (update?.label !== TYPING_LABEL || !nested(update, "payload")?.is_typing) return null;
     const edited = text2.replace(IS_TYPING, "$10");
     return edited === text2 ? null : edited;
@@ -16653,9 +17102,9 @@ ${text2}`)) {
       if (end > bytes.length) return null;
       let part = bytes.subarray(pos, end);
       const json = bytes[pos] === PART_DATA && end > pos + 8 ? new TextDecoder().decode(bytes.subarray(pos + 8, end)) : null;
-      const request2 = json && clearTyping(json);
-      if (request2) {
-        const encoded = new TextEncoder().encode(request2);
+      const request3 = json && clearTyping(json);
+      if (request3) {
+        const encoded = new TextEncoder().encode(request3);
         const length = encoded.length + 2;
         part = new Uint8Array(8 + encoded.length);
         part.set(bytes.subarray(pos, pos + 3));
@@ -17247,6 +17696,7 @@ ${text2}`)) {
     initFeature("unread-badge", initUnreadBadge);
     initFeature("recent-threads", initRecentThreads);
     initFeature("pinned-chats", initPinnedChats);
+    initFeature("unsent-messages", initUnsentMessages);
     initFeature("thread-nav", initThreadNav);
     initFeature("conversation-export", initConversationExport);
     initFeature("quick-reply", initQuickReply);

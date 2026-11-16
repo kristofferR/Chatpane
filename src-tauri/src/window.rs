@@ -1853,8 +1853,8 @@ fn init_script(
     return chatpaneAuthorizedEmit('chatpane:reply-result', {{ id: id, attempt: attempt, ok: ok }});
   }};
   // A signed request whose signed '<event>-result' carries JSON `data` for
-  // this call alone: scheduled messages (scheduled_send.rs) and pinned chats
-  // (pinned_chats.rs).
+  // this call alone: scheduled messages (scheduled_send.rs), pinned chats
+  // (pinned_chats.rs) and kept unsent messages (unsent_messages.rs).
   var chatpaneDataCall = function (requestEvent, payload, timedOutMessage) {{
     if (!chatpaneAuthorizedEmit || !chatpaneVerifyResult) return NativePromise.reject(new Error('native bridge unavailable'));
     var request = chatpaneNativeRequest();
@@ -1883,6 +1883,9 @@ fn init_script(
   }};
   var chatpanePinnedChats = function (payload) {{
     return chatpaneDataCall('chatpane:pinned-chats', payload, 'pinned chats timed out');
+  }};
+  var chatpaneUnsentMessages = function (payload) {{
+    return chatpaneDataCall('chatpane:unsent-messages', payload, 'unsent messages timed out');
   }};
 
   // Prefer settings cached in localStorage (written by apply_settings on every

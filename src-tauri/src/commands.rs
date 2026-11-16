@@ -419,6 +419,10 @@ fn store_settings(
             prev.update_check_hours,
         )
     };
+    let (prev_recover_unsent, prev_unsent_retention) = {
+        let prev = state.settings.lock().unwrap();
+        (prev.recover_unsent_messages, prev.unsent_retention_days)
+    };
     let mut effective = new.clone().sanitized();
     // The page owns the pane widths; the Settings window's copy may be older
     // than a drag made while it was open.
@@ -454,6 +458,16 @@ fn store_settings(
         }
     }
 
+    if effective.recover_unsent_messages != prev_recover_unsent {
+        // On needs the key in the OS credential store first; off deletes
+        // every kept copy and the key.
+        if let Err(e) = crate::unsent_messages::set_enabled(app, effective.recover_unsent_messages)
+        {
+            effective.recover_unsent_messages = prev_recover_unsent;
+            sync_errors.push(e);
+        }
+    }
+
     if save_settings(app, &effective)? == SaveOutcome::Superseded {
         // A newer settings snapshot already reached disk from a concurrent
         // save; applying this stale one would leave runtime settings diverged
@@ -468,6 +482,9 @@ fn store_settings(
     }
     *state.settings.lock().unwrap() = effective.clone();
     apply_settings(app, &effective);
+    if effective.unsent_retention_days != prev_unsent_retention {
+        crate::unsent_messages::retention_changed(app);
+    }
     // Enabling checks, or changing how often, restarts the schedule now.
     if effective.automatic_update_checks
         && (!prev_automatic_update_checks

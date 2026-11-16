@@ -62,6 +62,9 @@ open = "5"
 # Theme files are checked with a real CSS tokenizer (already in the tree via
 # Tauri), so escapes and comments can't sneak a remote url() past the check.
 cssparser = "0.37"
+# AES-256-GCM for kept unsent messages (unsent_messages.rs). Already in the
+# tree via rustls, so it adds no build cost.
+ring = "0.17"
 # Installed font families for Settings → Appearance → Message font.
 fontdb = "0.23"
 # Already in the tree via Tauri; the short delay when recreating a window on a
@@ -118,6 +121,9 @@ zbus = "5"
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6.2"
 objc2 = "0.6"
+# The Keychain item holding the unsent messages key (keystore.rs). The
+# version rustls-platform-verifier already uses, so no extra build cost.
+security-framework = "3"
 # Start on System Startup as an "Open at Login" item (SMAppService, macOS 13+).
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
 # NSSound and NSBeep: Settings → Notification sound → Preview.
@@ -150,7 +156,8 @@ muda = "0.20"
 # from the one containing Chatpane's window.
 # Win32_Media_Audio: PlaySound for a notification sound file chosen in Settings
 # (an unpackaged app's toast can't play one) and for Preview.
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Registry", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
+# Win32_Security_Credentials: the unsent messages key in Credential Manager.
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_Networking_WinSock", "Win32_Security", "Win32_Security_Credentials", "Win32_Storage_FileSystem", "Win32_System_Registry", "Win32_UI_HiDpi", "Win32_UI_WindowsAndMessaging"] }
 # Register the chatpane:// URL scheme in HKCU (per-user, no admin) so protocol
 # launches reach Chatpane as argv and are parsed in one audited place by
 # actions::action_from_argv. Registration only — the plugin's JS API capability

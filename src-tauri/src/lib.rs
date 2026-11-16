@@ -37,6 +37,7 @@ mod hotkey_portal;
 mod i18n;
 mod identity;
 mod install_environment;
+mod keystore;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(any(target_os = "linux", test))]
@@ -68,6 +69,7 @@ mod title_bar;
 mod tray;
 #[cfg(any(target_os = "linux", target_os = "windows", test))]
 mod tray_badge;
+mod unsent_messages;
 mod url_rules;
 mod user_agent;
 mod webview_watchdog;
@@ -465,6 +467,37 @@ fn result_signature<T: serde::Serialize>(secret: &str, event: &str, value: &T) -
     let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).ok()?;
     mac.update(format!("{event}\n{message}").as_bytes());
     Some(hex::encode(mac.finalize().into_bytes()))
+}
+
+/// Answer a page's `chatpaneDataCall` (window.rs): `data`, JSON text, goes
+/// to the requesting window only, as `<event>-result` signed with its secret.
+pub(crate) fn send_data_result(
+    app: &tauri::AppHandle,
+    label: &str,
+    event: &str,
+    request: &str,
+    data: String,
+) {
+    #[derive(serde::Serialize)]
+    struct Reply<'a> {
+        request: &'a str,
+        data: String,
+    }
+    let event = format!("{event}-result");
+    let reply = Reply { request, data };
+    let signature = app
+        .state::<AppState>()
+        .download_reveal_tokens
+        .lock()
+        .unwrap()
+        .get(label)
+        .and_then(|secret| result_signature(secret, &event, &reply));
+    if let (Some(signature), Some(window)) = (signature, app.get_webview_window(label)) {
+        let detail = serde_json::json!({ "request": reply.request, "data": reply.data, "signature": signature });
+        let _ = window.eval(format!(
+            "window.dispatchEvent(new CustomEvent('{event}', {{ detail: {detail} }}));"
+        ));
+    }
 }
 
 pub(crate) fn download_finished_signature(
@@ -1231,6 +1264,8 @@ pub fn run() {
             account::set_messenger_account,
             account::messenger_profile,
             log_out::log_out,
+            unsent_messages::unsent_messages_count,
+            unsent_messages::delete_unsent_messages,
             commands::open_facebook_language,
             themes::list_themes,
             themes::add_theme,
@@ -1262,6 +1297,7 @@ pub fn run() {
             sound::install(app.handle());
             pane_widths::install(app.handle());
             pinned_chats::install(app.handle());
+            unsent_messages::install(app.handle());
             growth::install(app.handle());
 
             // Portable zips have no installer to register the scheme, and a moved

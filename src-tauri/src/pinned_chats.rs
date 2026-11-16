@@ -247,32 +247,6 @@ impl PinnedChats {
     }
 }
 
-#[derive(Serialize)]
-struct Reply<'a> {
-    request: &'a str,
-    data: String,
-}
-
-/// Answer the requesting window only, signed with its secret (the page checks
-/// it with `chatpaneVerifyResult`).
-fn reply(app: &tauri::AppHandle, label: &str, request: &str, data: String) {
-    let event = format!("{EVENT}-result");
-    let reply = Reply { request, data };
-    let signature = app
-        .state::<crate::AppState>()
-        .download_reveal_tokens
-        .lock()
-        .unwrap()
-        .get(label)
-        .and_then(|secret| crate::result_signature(secret, &event, &reply));
-    if let (Some(signature), Some(window)) = (signature, app.get_webview_window(label)) {
-        let detail = serde_json::json!({ "request": reply.request, "data": reply.data, "signature": signature });
-        let _ = window.eval(format!(
-            "window.dispatchEvent(new CustomEvent('{event}', {{ detail: {detail} }}));"
-        ));
-    }
-}
-
 /// Tell the other Messenger windows to ask again. It carries nothing, so a
 /// page script faking it only causes a signed request.
 fn announce_change(app: &tauri::AppHandle, except: &str) {
@@ -333,7 +307,7 @@ pub(crate) fn install(app: &tauri::AppHandle) {
                 "pins": pinned.store.get(&request.account),
             })
             .to_string();
-            reply(&handle, &label, &request.request, data);
+            crate::send_data_result(&handle, &label, EVENT, &request.request, data);
             if changed {
                 announce_change(&handle, &label);
             }

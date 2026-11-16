@@ -962,3 +962,18 @@ html[data-chatpane-message-menu-probe] [role="menu"] {
 @container (max-width: 120px) {
   .chatpane-pinned-fallback span { display: none; }
 }
+/* A kept copy of an unsent message, under Messenger's notice (Ref #370). */
+.chatpane-unsent-copy {
+  box-sizing: border-box; align-self: flex-start; width: fit-content;
+  max-width: min(100%, 480px); margin: 4px 0 2px;
+  padding: 6px 12px 8px; border-radius: 18px;
+  border: 1px dashed var(--divider, rgba(127, 127, 127, 0.4));
+  color: var(--primary-text, #050505); font-size: 15px; line-height: 20px;
+  white-space: pre-wrap; overflow-wrap: anywhere; user-select: text;
+}
+.chatpane-unsent-label {
+  margin-bottom: 2px; color: var(--secondary-text, #65676b);
+  font-size: 12px; line-height: 16px; white-space: normal;
+}
+.chatpane-unsent-attachment { color: var(--secondary-text, #65676b); }
+
