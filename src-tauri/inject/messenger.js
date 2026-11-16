@@ -8433,11 +8433,15 @@ ${button.innerHTML}`)
       for (const listener of [...this.listeners]) listener();
     }
   };
+  var schedulePair = (run, delay) => {
+    const timer = setTimeout(run, delay);
+    return () => clearTimeout(timer);
+  };
   var RevokePairs = class {
-    constructor(now = Date.now) {
-      __publicField(this, "now", now);
-      __publicField(this, "deleted", /* @__PURE__ */ new Map());
-      __publicField(this, "revoked", /* @__PURE__ */ new Map());
+    constructor(keep2, schedule = schedulePair) {
+      __publicField(this, "keep", keep2);
+      __publicField(this, "schedule", schedule);
+      __publicField(this, "waiting", /* @__PURE__ */ new Map());
     }
     /** A thread and a message's sort key (its time in milliseconds). */
     static key(jid, sortKey) {
@@ -8448,35 +8452,32 @@ ${time}`;
     }
     /** A row was deleted; the copy to keep if a Revoked message pairs with it. */
     deletedRow(key, copy) {
-      const id = this.take(this.revoked, key);
-      if (id !== void 0) return id === null ? null : { ...copy, id };
-      this.wait(this.deleted, key, copy);
-      return null;
+      const entry = this.wait(key);
+      entry.copy = entry.copy === void 0 ? copy : null;
     }
     /** A Revoked message arrived as row `id`; the copy to keep if one waits. */
     revokedMessage(key, id) {
-      const copy = this.take(this.deleted, key);
-      if (copy !== void 0) return copy === null ? null : { ...copy, id };
-      this.wait(this.revoked, key, id);
-      return null;
-    }
-    /** The other side waiting under `key`; an ambiguous one stays to the end. */
-    take(map, key) {
-      const now = this.now();
-      for (const side of [this.deleted, this.revoked]) {
-        for (const [waiting, entry2] of side) if (entry2.until <= now) side.delete(waiting);
-      }
-      const entry = map.get(key);
-      if (entry?.value) map.delete(key);
-      return entry?.value;
+      const entry = this.wait(key);
+      entry.id = entry.id === void 0 ? id : null;
     }
     /** Forget everything waiting: turning the setting off ends every capture. */
     clear() {
-      this.deleted.clear();
-      this.revoked.clear();
+      for (const entry of this.waiting.values()) entry.cancel();
+      this.waiting.clear();
     }
-    wait(map, key, value) {
-      map.set(key, { value: map.has(key) ? null : value, until: this.now() + PAIR_WINDOW_MS });
+    wait(key) {
+      let entry = this.waiting.get(key);
+      if (!entry) {
+        entry = {
+          cancel: this.schedule(() => {
+            const pending = this.waiting.get(key);
+            this.waiting.delete(key);
+            if (pending?.copy && pending.id) this.keep({ ...pending.copy, id: pending.id });
+          }, PAIR_WINDOW_MS)
+        };
+        this.waiting.set(key, entry);
+      }
+      return entry;
     }
   };
   function isContext(value) {
@@ -8555,13 +8556,14 @@ ${time}`;
     }, method2);
     return true;
   }
-  function encryptedChatHooks(hooks, pairs2 = new RevokePairs()) {
+  function encryptedChatHooks(hooks, pairs2 = new RevokePairs((copy) => {
+    if (hooks.enabled()) hooks.keep(copy);
+  })) {
     const revoked = (message) => {
       if (!isRow2(message) || message.type_ !== REVOKED || message.isAuthorMe === true) return;
       const key = RevokePairs.key(message.chatJid, message.sortOrderMs);
       if (!key || typeof message.msgId !== "string") return;
-      const copy = pairs2.revokedMessage(key, message.msgId);
-      if (copy) hooks.keep(copy);
+      pairs2.revokedMessage(key, message.msgId);
     };
     return {
       /** MAWBridgeDeleteMessagesHandler: hold each deleted row for its pair. */
@@ -8579,8 +8581,7 @@ ${time}`;
               const copy = copyFromRow(row, attachments, row.messageId, hooks.options());
               const sortKey = i64Text(row.primarySortKey, hooks.options().i64ToText);
               const key = copy && RevokePairs.key(event.threadJid, sortKey);
-              const paired = key && pairs2.deletedRow(key, copy);
-              if (paired) hooks.keep(paired);
+              if (key) pairs2.deletedRow(key, copy);
             }
           },
           hooks
@@ -8649,7 +8650,7 @@ ${time}`;
   var CHANGED_EVENT2 = "chatpane:unsent-messages-changed";
   var MESSAGE_PROCEDURES = /* @__PURE__ */ new Set(["LSUpsertMessage", "LSDeleteThenInsertMessage"]);
   var copies = new UnsentCopies();
-  var pairs = new RevokePairs();
+  var pairs = new RevokePairs(keep);
   var account2 = null;
   var revision = 0;
   function enabled2() {

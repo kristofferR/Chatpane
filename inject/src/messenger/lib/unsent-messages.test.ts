@@ -123,45 +123,91 @@ test("UnsentCopies notifies on change and returns stable snapshots", () => {
   expect(calls).toBe(2);
 });
 
+/** Run pairing deadlines without waiting 30 seconds in tests. */
+function pairing(keep?: (copy: UnsentCopy) => void) {
+  const kept: UnsentCopy[] = [];
+  const pending = new Set<() => void>();
+  const pairs = new RevokePairs(keep ?? ((copy) => kept.push(copy)), (run, delay) => {
+    expect(delay).toBe(PAIR_WINDOW_MS);
+    pending.add(run);
+    return () => pending.delete(run);
+  });
+  const expire = () => {
+    for (const run of [...pending]) {
+      pending.delete(run);
+      run();
+    }
+  };
+  return { pairs, kept, expire };
+}
+
 describe("RevokePairs", () => {
   const copy = { id: "original" } as UnsentCopy;
 
   test("pairs a deleted row with the Revoked message in either order", () => {
-    const pairs = new RevokePairs();
+    const { pairs, kept, expire } = pairing();
     const key = RevokePairs.key("123@msgr", 1700000000)!;
-    expect(pairs.deletedRow(key, copy)).toBeNull();
-    expect(pairs.revokedMessage(key, "notice")).toEqual({ id: "notice" } as UnsentCopy);
-    expect(pairs.revokedMessage(key, "again")).toBeNull();
+    pairs.deletedRow(key, copy);
+    pairs.revokedMessage(key, "notice");
 
     const other = RevokePairs.key("123@msgr", 1700000001)!;
-    expect(pairs.revokedMessage(other, "notice2")).toBeNull();
-    expect(pairs.deletedRow(other, copy)).toEqual({ id: "notice2" } as UnsentCopy);
+    pairs.revokedMessage(other, "notice2");
+    pairs.deletedRow(other, copy);
+    expect(kept).toEqual([]);
+    expire();
+    expect(kept).toEqual([{ id: "notice" }, { id: "notice2" }] as UnsentCopy[]);
   });
 
-  test("two rows from one chat and second are kept by neither notice", () => {
-    const pairs = new RevokePairs();
+  test.each(["deletes first", "notices first", "interleaved"])(
+    "sort-key collisions are kept by neither notice: %s",
+    (order) => {
+      const { pairs, kept, expire } = pairing();
+      const key = RevokePairs.key("123@msgr", 1700000000)!;
+      const deletedA = () => pairs.deletedRow(key, copy);
+      const deletedB = () => pairs.deletedRow(key, { id: "other" } as UnsentCopy);
+      const noticeA = () => pairs.revokedMessage(key, "notice1");
+      const noticeB = () => pairs.revokedMessage(key, "notice2");
+      const events =
+        order === "deletes first"
+          ? [deletedA, deletedB, noticeB, noticeA]
+          : order === "notices first"
+            ? [noticeB, noticeA, deletedA, deletedB]
+            : [deletedA, noticeB, deletedB, noticeA];
+      for (const event of events) event();
+      expect(kept).toEqual([]);
+      expire();
+      expect(kept).toEqual([]);
+    },
+  );
+
+  test("Remove for you cannot pair with another deleted row's notice", () => {
+    const { pairs, kept, expire } = pairing();
     const key = RevokePairs.key("123@msgr", 1700000000)!;
-    expect(pairs.deletedRow(key, copy)).toBeNull();
-    expect(pairs.deletedRow(key, { id: "other" } as UnsentCopy)).toBeNull();
-    expect(pairs.revokedMessage(key, "notice1")).toBeNull();
-    expect(pairs.revokedMessage(key, "notice2")).toBeNull();
+    pairs.deletedRow(key, copy);
+    pairs.revokedMessage(key, "other-notice");
+    pairs.deletedRow(key, { id: "other" } as UnsentCopy);
+    expire();
+    expect(kept).toEqual([]);
   });
 
   test("turning the setting off forgets captures waiting for their pair", () => {
-    const pairs = new RevokePairs();
+    const { pairs, kept, expire } = pairing();
     const key = RevokePairs.key("123@msgr", 1700000000851)!;
     pairs.deletedRow(key, copy);
+    pairs.revokedMessage(key, "notice");
     pairs.clear();
-    expect(pairs.revokedMessage(key, "notice")).toBeNull();
+    expire();
+    expect(kept).toEqual([]);
   });
 
   test("a delete with no Revoked message (Remove for you) expires", () => {
-    let now = 0;
-    const pairs = new RevokePairs(() => now);
+    const { pairs, kept, expire } = pairing();
     const key = RevokePairs.key("123@msgr", 5)!;
     pairs.deletedRow(key, copy);
-    now = PAIR_WINDOW_MS;
-    expect(pairs.revokedMessage(key, "notice")).toBeNull();
+    expire();
+    pairs.revokedMessage(key, "notice");
+    expire();
+    expect(kept).toEqual([]);
   });
 
   test("keys a thread and a sort key", () => {
@@ -280,7 +326,8 @@ describe("encryptedChatHooks", () => {
       [{ messageId: "123@msgr.9", attachmentType: i64("2") }],
     );
     const { capture, kept } = hooks();
-    const encrypted = encryptedChatHooks(capture);
+    const { pairs, expire } = pairing(capture.keep);
+    const encrypted = encryptedChatHooks(capture, pairs);
     const calls: string[] = [];
     const handlers: Record<string, unknown> = {
       call: async () => calls.push("delete"),
@@ -308,6 +355,8 @@ describe("encryptedChatHooks", () => {
       isAuthorMe: false,
     });
     expect(calls).toEqual(["delete", "new"]);
+    expect(kept).toEqual([]);
+    expire();
     expect(kept).toHaveLength(1);
     expect(kept[0]).toMatchObject({ id: "456@msgr.1", text: "see you at 6" });
     expect(kept[0]?.attachments[0]?.kind).toBe("image");
@@ -316,7 +365,8 @@ describe("encryptedChatHooks", () => {
   test("ignores Remove for you, own unsends and a disabled setting", async () => {
     const transaction = install([row({ messageId: "a" })], []);
     const { capture, kept } = hooks();
-    const encrypted = encryptedChatHooks(capture);
+    const { pairs, expire } = pairing(capture.keep);
+    const encrypted = encryptedChatHooks(capture, pairs);
     const handlers: Record<string, unknown> = { call: async () => "deleted" };
     encrypted.patchDelete(handlers);
     const newMsg: Record<string, unknown> = { call: async () => "added" };
@@ -343,6 +393,7 @@ describe("encryptedChatHooks", () => {
       sortOrderMs: 1700000000852,
       msgId: "n",
     });
+    expire();
     expect(kept).toEqual([]);
 
     const off = hooks(false);

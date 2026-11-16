@@ -215,20 +215,30 @@ export class UnsentCopies {
   }
 }
 
-/** A side waiting for its pair; null when two arrived for one key. */
-type Waiting<T> = Map<string, { value: T | null; until: number }>;
+/** Cancel a scheduled pairing deadline. */
+type SchedulePair = (run: () => void, delay: number) => () => void;
+
+const schedulePair: SchedulePair = (run, delay) => {
+  const timer = setTimeout(run, delay);
+  return () => clearTimeout(timer);
+};
 
 /**
  * Pairs an encrypted chat's deleted row with the Revoked message that
- * replaces it. Each side waits up to PAIR_WINDOW_MS for the other. Two rows
- * from one chat and second can't be told apart, so neither is kept rather
- * than one under the other's notice.
+ * replaces it. Wait the full PAIR_WINDOW_MS before publishing: another row
+ * with the same thread and millisecond sort key makes the pair ambiguous,
+ * even if the first deletion and notice arrived together.
  */
 export class RevokePairs {
-  private readonly deleted: Waiting<UnsentCopy> = new Map();
-  private readonly revoked: Waiting<string> = new Map();
+  private readonly waiting = new Map<
+    string,
+    { copy?: UnsentCopy | null; id?: string | null; cancel: () => void }
+  >();
 
-  constructor(private readonly now: () => number = Date.now) {}
+  constructor(
+    private readonly keep: (copy: UnsentCopy) => void,
+    private readonly schedule: SchedulePair = schedulePair,
+  ) {}
 
   /** A thread and a message's sort key (its time in milliseconds). */
   static key(jid: unknown, sortKey: unknown): string | null {
@@ -238,40 +248,36 @@ export class RevokePairs {
   }
 
   /** A row was deleted; the copy to keep if a Revoked message pairs with it. */
-  deletedRow(key: string, copy: UnsentCopy): UnsentCopy | null {
-    const id = this.take(this.revoked, key);
-    if (id !== undefined) return id === null ? null : { ...copy, id };
-    this.wait(this.deleted, key, copy);
-    return null;
+  deletedRow(key: string, copy: UnsentCopy) {
+    const entry = this.wait(key);
+    entry.copy = entry.copy === undefined ? copy : null;
   }
 
   /** A Revoked message arrived as row `id`; the copy to keep if one waits. */
-  revokedMessage(key: string, id: string): UnsentCopy | null {
-    const copy = this.take(this.deleted, key);
-    if (copy !== undefined) return copy === null ? null : { ...copy, id };
-    this.wait(this.revoked, key, id);
-    return null;
-  }
-
-  /** The other side waiting under `key`; an ambiguous one stays to the end. */
-  private take<T>(map: Waiting<T>, key: string): T | null | undefined {
-    const now = this.now();
-    for (const side of [this.deleted, this.revoked]) {
-      for (const [waiting, entry] of side) if (entry.until <= now) side.delete(waiting);
-    }
-    const entry = map.get(key);
-    if (entry?.value) map.delete(key);
-    return entry?.value;
+  revokedMessage(key: string, id: string) {
+    const entry = this.wait(key);
+    entry.id = entry.id === undefined ? id : null;
   }
 
   /** Forget everything waiting: turning the setting off ends every capture. */
   clear() {
-    this.deleted.clear();
-    this.revoked.clear();
+    for (const entry of this.waiting.values()) entry.cancel();
+    this.waiting.clear();
   }
 
-  private wait<T>(map: Waiting<T>, key: string, value: T) {
-    map.set(key, { value: map.has(key) ? null : value, until: this.now() + PAIR_WINDOW_MS });
+  private wait(key: string) {
+    let entry = this.waiting.get(key);
+    if (!entry) {
+      entry = {
+        cancel: this.schedule(() => {
+          const pending = this.waiting.get(key);
+          this.waiting.delete(key);
+          if (pending?.copy && pending.id) this.keep({ ...pending.copy, id: pending.id });
+        }, PAIR_WINDOW_MS),
+      };
+      this.waiting.set(key, entry);
+    }
+    return entry;
   }
 }
 
@@ -414,13 +420,17 @@ function before(
  * Hooks for Messenger's encrypted-chat handlers. Each `patch…` takes a
  * module's exports and reports whether it recognised them.
  */
-export function encryptedChatHooks(hooks: CaptureHooks, pairs = new RevokePairs()) {
+export function encryptedChatHooks(
+  hooks: CaptureHooks,
+  pairs = new RevokePairs((copy) => {
+    if (hooks.enabled()) hooks.keep(copy);
+  }),
+) {
   const revoked = (message: unknown) => {
     if (!isRow(message) || message.type_ !== REVOKED || message.isAuthorMe === true) return;
     const key = RevokePairs.key(message.chatJid, message.sortOrderMs);
     if (!key || typeof message.msgId !== "string") return;
-    const copy = pairs.revokedMessage(key, message.msgId);
-    if (copy) hooks.keep(copy);
+    pairs.revokedMessage(key, message.msgId);
   };
   return {
     /** MAWBridgeDeleteMessagesHandler: hold each deleted row for its pair. */
@@ -442,8 +452,7 @@ export function encryptedChatHooks(hooks: CaptureHooks, pairs = new RevokePairs(
             // The Revoked message carries the row's sort key as sortOrderMs.
             const sortKey = i64Text(row.primarySortKey, hooks.options().i64ToText);
             const key = copy && RevokePairs.key(event.threadJid, sortKey);
-            const paired = key && pairs.deletedRow(key, copy);
-            if (paired) hooks.keep(paired);
+            if (key) pairs.deletedRow(key, copy);
           }
         },
         hooks,

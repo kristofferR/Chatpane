@@ -34,7 +34,7 @@ type Factory = (...args: unknown[]) => unknown;
 type Define = (...args: unknown[]) => unknown;
 
 const copies = new UnsentCopies();
-const pairs = new RevokePairs();
+const pairs = new RevokePairs(keep);
 let account: string | null = null;
 /** The newest native answer applied; older ones arriving late are dropped. */
 let revision = 0;

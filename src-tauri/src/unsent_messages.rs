@@ -381,6 +381,14 @@ impl Store {
     /// must go: a key left in an unreachable keyring opens nothing without it,
     /// and turning the setting off must never depend on the keyring.
     fn clear(&mut self, forget_key: bool) -> Result<(), String> {
+        let result = account_files(self.path.parent().unwrap_or(Path::new(".")))
+            .iter()
+            .try_for_each(|file| remove(file));
+        // Delete All must leave the count and retryable copies intact on failure.
+        // Opting out still forgets the key and plaintext even if deletion fails.
+        if result.is_err() && !forget_key {
+            return result;
+        }
         if let Some(copies) = self.copies.as_mut() {
             copies.messages.clear();
         }
@@ -391,9 +399,7 @@ impl Store {
             }
         }
         self.revision += 1;
-        account_files(self.path.parent().unwrap_or(Path::new(".")))
-            .iter()
-            .try_for_each(|file| remove(file))
+        result
     }
 }
 
@@ -733,6 +739,34 @@ mod tests {
         assert!(copies.purge(12 * DAY_MS, 7));
         assert!(copies.list("2").is_empty());
         assert!(!copies.purge(12 * DAY_MS, 7));
+    }
+
+    #[test]
+    fn failed_delete_all_preserves_copies_and_revision_until_retry() {
+        let dir = std::env::temp_dir().join(format!("chatpane-unsent-{}", uuid::Uuid::new_v4()));
+        let path = dir.join(STORE_FILE);
+        // A directory at the file path reliably makes remove_file fail on all platforms.
+        std::fs::create_dir_all(&path).unwrap();
+        let mut copies = Copies::default();
+        copies.add("1", kept("a", now_ms()));
+        let mut store = Store {
+            path: path.clone(),
+            copies: Some(copies),
+            revision: 1,
+            enabled: true,
+            accepting: true,
+        };
+        assert!(store.clear(false).is_err());
+        assert_eq!(store.copies().unwrap().messages.len(), 1);
+        assert_eq!(store.revision, 1);
+
+        std::fs::remove_dir(&path).unwrap();
+        store.copies().unwrap().save(&path).unwrap();
+        store.clear(false).unwrap();
+        assert!(!path.exists());
+        assert!(store.copies().unwrap().messages.is_empty());
+        assert_eq!(store.revision, 2);
+        std::fs::remove_dir(dir).unwrap();
     }
 
     #[test]
