@@ -23,6 +23,7 @@ use tauri::{Listener, Manager};
 
 const EVENT: &str = "chatpane:unsent-messages";
 const CHANGED_EVENT: &str = "chatpane:unsent-messages-changed";
+const RESET_EVENT: &str = "chatpane:unsent-messages-reset";
 /// The encrypted copies, in the data directory.
 const STORE_FILE: &str = "unsent-messages.bin";
 const TEMP_PREFIX: &str = ".unsent-messages-";
@@ -533,7 +534,7 @@ pub(crate) async fn delete_unsent_messages(
         .await
         .map_err(|e| e.to_string())?
         .inspect_err(|error| log::error!("could not delete kept unsent messages: {error}"))?;
-    announce_change(&app, None);
+    announce(&app, RESET_EVENT, None);
     Ok(true)
 }
 
@@ -553,10 +554,14 @@ struct Request {
     op: Op,
 }
 
-/// Tell Messenger windows other than `except` to ask again. It carries
-/// nothing, so a page script faking it only causes a signed request.
+/// Tell Messenger windows other than `except` to ask again.
 fn announce_change(app: &tauri::AppHandle, except: Option<&str>) {
-    let script = format!("window.dispatchEvent(new Event('{CHANGED_EVENT}'));");
+    announce(app, CHANGED_EVENT, except);
+}
+
+/// Carry no data: pages can only refresh or discard their local copies.
+fn announce(app: &tauri::AppHandle, event: &str, except: Option<&str>) {
+    let script = format!("window.dispatchEvent(new Event('{event}'));");
     for (label, window) in app.webview_windows() {
         if Some(label.as_str()) != except && crate::window::is_messenger_window_label(&label) {
             let _ = window.eval(&script);

@@ -27,6 +27,8 @@ import {
 
 /** Native to page: the kept copies changed; ask again. */
 const CHANGED_EVENT = "chatpane:unsent-messages-changed";
+/** Native to page: Delete All succeeded; discard pending captures too. */
+const RESET_EVENT = "chatpane:unsent-messages-reset";
 /** Messenger's message-writing stored procedures that can mark a row unsent. */
 const MESSAGE_PROCEDURES = new Set(["LSUpsertMessage", "LSDeleteThenInsertMessage"]);
 
@@ -38,6 +40,8 @@ const pairs = new RevokePairs(keep);
 let account: string | null = null;
 /** The newest native answer applied; older ones arriving late are dropped. */
 let revision = 0;
+/** Reset invalidates native answers that were already in flight. */
+let generation = 0;
 
 function enabled() {
   return account !== null && window.__CHATPANE_SETTINGS__?.recover_unsent_messages === true;
@@ -63,6 +67,7 @@ function readOptions(): ReadOptions {
 /** Ask native code for this account's copies, or keep one. */
 async function request(change?: UnsentCopy) {
   const owner = account;
+  const requestedGeneration = generation;
   if (!owner || typeof chatpaneUnsentMessages !== "function") return;
   try {
     const data = await chatpaneUnsentMessages(
@@ -70,7 +75,7 @@ async function request(change?: UnsentCopy) {
     );
     // An answer that failed natively keeps what the page shows.
     const answer = data as { error?: unknown; revision?: unknown } | null;
-    if (owner !== account || answer?.error === true) return;
+    if (owner !== account || requestedGeneration !== generation || answer?.error === true) return;
     const answered = Number(answer?.revision);
     if (!(answered >= revision)) return;
     revision = answered;
@@ -175,12 +180,14 @@ export function initUnsentMessages() {
   account = accountId(document.cookie);
   if (!account) return;
   let wasEnabled = enabled();
-  // Off forgets every copy shown and every capture still waiting for its pair.
+  // Off and Delete All forget displayed copies and captures waiting for a pair.
   const forget = () => {
+    generation++;
     copies.clear();
     pairs.clear();
   };
   window.addEventListener(CHANGED_EVENT, () => void (enabled() ? request() : forget()));
+  window.addEventListener(RESET_EVENT, forget);
   window.addEventListener("chatpane:settings", () => {
     if (enabled() === wasEnabled) return;
     wasEnabled = enabled();

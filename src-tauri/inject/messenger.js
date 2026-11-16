@@ -8648,11 +8648,13 @@ ${time}`;
 
   // inject/src/messenger/features/unsent-messages.ts
   var CHANGED_EVENT2 = "chatpane:unsent-messages-changed";
+  var RESET_EVENT = "chatpane:unsent-messages-reset";
   var MESSAGE_PROCEDURES = /* @__PURE__ */ new Set(["LSUpsertMessage", "LSDeleteThenInsertMessage"]);
   var copies = new UnsentCopies();
   var pairs = new RevokePairs(keep);
   var account2 = null;
   var revision = 0;
+  var generation = 0;
   function enabled2() {
     return account2 !== null && window.__CHATPANE_SETTINGS__?.recover_unsent_messages === true;
   }
@@ -8675,13 +8677,14 @@ ${time}`;
   }
   async function request2(change) {
     const owner = account2;
+    const requestedGeneration = generation;
     if (!owner || typeof chatpaneUnsentMessages !== "function") return;
     try {
       const data = await chatpaneUnsentMessages(
         change ? { account: owner, op: "add", message: change } : { account: owner, op: "list" }
       );
       const answer = data;
-      if (owner !== account2 || answer?.error === true) return;
+      if (owner !== account2 || requestedGeneration !== generation || answer?.error === true) return;
       const answered = Number(answer?.revision);
       if (!(answered >= revision)) return;
       revision = answered;
@@ -8771,10 +8774,12 @@ ${time}`;
     if (!account2) return;
     let wasEnabled = enabled2();
     const forget = () => {
+      generation++;
       copies.clear();
       pairs.clear();
     };
     window.addEventListener(CHANGED_EVENT2, () => void (enabled2() ? request2() : forget()));
+    window.addEventListener(RESET_EVENT, forget);
     window.addEventListener("chatpane:settings", () => {
       if (enabled2() === wasEnabled) return;
       wasEnabled = enabled2();
@@ -11025,8 +11030,8 @@ ${time}`;
     const value = `${normalizeNotificationText(title)}\0${normalizeNotificationText(body)}`;
     return hashText(value);
   }
-  function notificationDeliveryDedupeKey(fingerprint, generation) {
-    return generation === void 0 ? fingerprint : notificationDedupeKey(fingerprint, generation);
+  function notificationDeliveryDedupeKey(fingerprint, generation2) {
+    return generation2 === void 0 ? fingerprint : notificationDedupeKey(fingerprint, generation2);
   }
   var NOTIFIED_STORE_LIMIT = 300;
   var NOTIFIED_STORE_VERSION = 4;
