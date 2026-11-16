@@ -60,6 +60,7 @@ import { initThreadNav } from "./features/thread-nav";
 import { initTitleBar } from "./features/title-bar";
 import { initTypingBlock } from "./features/typing-block";
 import { initUnreadBadge } from "./features/unread-badge";
+import { initUnsentMessages } from "./features/unsent-messages";
 import { initViewerControls } from "./features/viewer-controls";
 import { initZoom } from "./features/zoom";
 import { migratePageStorage } from "./lib/storage-migration";
@@ -116,6 +117,7 @@ function main() {
   initFeature("unread-badge", initUnreadBadge);
   initFeature("recent-threads", initRecentThreads);
   initFeature("pinned-chats", initPinnedChats);
+  initFeature("unsent-messages", initUnsentMessages);
   initFeature("thread-nav", initThreadNav);
   initFeature("conversation-export", initConversationExport);
   initFeature("quick-reply", initQuickReply);

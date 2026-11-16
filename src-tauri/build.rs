@@ -26,6 +26,8 @@ const COMMANDS: &[&str] = &[
     "set_messenger_account",
     "messenger_profile",
     "log_out",
+    "unsent_messages_count",
+    "delete_unsent_messages",
     "open_facebook_language",
     "list_themes",
     "add_theme",

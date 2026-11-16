@@ -13,6 +13,7 @@ import { interceptNotificationModules } from "./page-notifications";
 import { interceptPinnedChatModules } from "./pinned-chats";
 import { reportRateLimit } from "./rate-limit";
 import { syncProcessing } from "./sync-processing";
+import { interceptUnsentMessageModules } from "./unsent-messages";
 import { workerRecovery, workerReplacement } from "./worker-recovery";
 
 const SEARCH_INDEX_WAKE_MS = 5 * 60_000;
@@ -76,8 +77,10 @@ export function initFacebookModuleInterception() {
       value as FacebookModuleDefine,
       (define) =>
         createFacebookModuleDefineInterceptor(
-          interceptPinnedChatModules(
-            interceptNotificationModules(interceptErrorBlock(interceptSoundModules(define))),
+          interceptUnsentMessageModules(
+            interceptPinnedChatModules(
+              interceptNotificationModules(interceptErrorBlock(interceptSoundModules(define))),
+            ),
           ) as FacebookModuleDefine,
           shouldBlockTelemetry,
           (restore) => searchIndex.register(restore),

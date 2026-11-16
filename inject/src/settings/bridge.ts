@@ -38,6 +38,8 @@ interface Commands {
   set_messenger_account: [{ change: MessengerAccountChange }, MessengerAccountState];
   messenger_profile: [undefined, MessengerProfile];
   log_out: [undefined, null];
+  unsent_messages_count: [undefined, number];
+  delete_unsent_messages: [undefined, boolean];
   copy_share_message: [undefined, null];
   open_github: [undefined, null];
   update_release_notes: [{ version: string }, string | null];

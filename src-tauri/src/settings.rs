@@ -267,6 +267,11 @@ pub(crate) struct Settings {
     /// Remove Facebook attribution parameters from links copied from Messenger
     /// or opened in the system browser.
     pub(crate) strip_link_tracking: bool,
+    /// Keep a copy of a message someone unsends, encrypted on this computer
+    /// (unsent_messages.rs, Ref #370). Off by default.
+    pub(crate) recover_unsent_messages: bool,
+    /// Days a kept unsent message stays: one of `unsent_messages::RETENTION_DAYS`.
+    pub(crate) unsent_retention_days: u32,
     /// Require Cmd+Enter on macOS or Ctrl+Enter elsewhere to send a message.
     /// Plain Enter inserts a line break. Off by default.
     pub(crate) send_with_accelerator: bool,
@@ -343,6 +348,9 @@ impl Settings {
         self.notification_sound = self.sound_choice() != crate::sound::NotificationSound::Off;
         if !matches!(self.update_check_hours, 1 | 4 | 24) {
             self.update_check_hours = 4;
+        }
+        if !crate::unsent_messages::RETENTION_DAYS.contains(&self.unsent_retention_days) {
+            self.unsent_retention_days = crate::unsent_messages::DEFAULT_RETENTION_DAYS;
         }
         if !crate::notifications::REACTIONS
             .iter()
@@ -427,6 +435,8 @@ impl Default for Settings {
             global_hotkey: false,
             block_telemetry: true,
             strip_link_tracking: true,
+            recover_unsent_messages: false,
+            unsent_retention_days: crate::unsent_messages::DEFAULT_RETENTION_DAYS,
             send_with_accelerator: false,
             download_behavior: DownloadBehavior::default(),
             hold_failures: false,
@@ -858,6 +868,7 @@ fn account_data_paths(app: &tauri::AppHandle) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     if let Ok(data) = app.path().app_data_dir() {
         paths.extend(crate::notification_ledger::account_files(&data));
+        paths.extend(crate::unsent_messages::account_files(&data));
         #[cfg(target_os = "macos")]
         paths.push(data.join(crate::notifications::PERSISTED_NOTIFICATION_ROUTES_DIR));
     }

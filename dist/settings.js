@@ -376,6 +376,7 @@
       settingsText("settings.privacy.strip_link_tracking.label"),
       settingsText("settings.privacy.strip_link_tracking.hint")
     ],
+    ["recover_unsent_messages", settingsText("settings.unsent.keep.label"), settingsText("settings.unsent.keep.hint")],
     [
       "send_with_accelerator",
       settingsText("settings.advanced.send_with_accelerator.label"),
@@ -456,7 +457,8 @@
         "profile",
         ["active_status", "read_receipts", "account_notice", "block_typing_indicator"],
         ["hide_names", "hide_avatars"],
-        ["block_telemetry", "strip_link_tracking"]
+        ["block_telemetry", "strip_link_tracking"],
+        ["recover_unsent_messages", "unsent_retention_days", "unsent_messages_kept"]
       ]
     },
     {
@@ -558,6 +560,9 @@
   async function saveSetting(change) {
     try {
       settings = await invoke("update_setting", { change });
+      if (change.key === "recover_unsent_messages" || change.key === "unsent_retention_days") {
+        void refreshUnsentKept();
+      }
       if (change.key === "autostart") {
         autostartStatus = await readAutostartStatus();
         settings = await invoke("get_settings");
@@ -1143,6 +1148,56 @@
       (value) => persist({ key: "update_check_hours", value })
     );
   }
+  function unsentRetentionRow() {
+    return selectRow(
+      settings.unsent_retention_days,
+      7,
+      [
+        [7, settingsText("settings.unsent.retention.week")],
+        [30, settingsText("settings.unsent.retention.month")]
+      ],
+      settingsText("settings.unsent.retention.label"),
+      settingsText("settings.unsent.retention.hint"),
+      !settings.recover_unsent_messages,
+      (value) => persist({ key: "unsent_retention_days", value })
+    );
+  }
+  var unsentKept = null;
+  var unsentKeptRowShown = null;
+  async function refreshUnsentKept() {
+    try {
+      unsentKept = await invoke("unsent_messages_count");
+    } catch (error) {
+      console.error(error);
+      unsentKept = null;
+    }
+    if (unsentKeptRowShown) showUnsentKept(unsentKeptRowShown);
+  }
+  function showUnsentKept(row) {
+    row.querySelector(".hint").textContent = unsentKept === null ? settingsText("settings.unsent.kept.hint") : unsentKept === 0 ? settingsText("settings.unsent.kept.none") : settingsText("settings.unsent.kept.count", { count: unsentKept });
+    row.querySelector("button").disabled = !settings.recover_unsent_messages || unsentKept === 0;
+  }
+  function unsentKeptRow() {
+    const row = buttonRow(
+      settingsText("settings.unsent.kept.label"),
+      settingsText("settings.unsent.kept.hint"),
+      settingsText("settings.unsent.kept.delete"),
+      async (button) => {
+        button.disabled = true;
+        try {
+          if (await invoke("delete_unsent_messages")) {
+            setStatus(settingsText("settings.unsent.kept.deleted"), 2e3);
+          }
+        } catch (error) {
+          setStatus(errorMessage(error));
+        }
+        await refreshUnsentKept();
+      }
+    );
+    showUnsentKept(row);
+    unsentKeptRowShown = row;
+    return row;
+  }
   function badgeModeRow() {
     return selectRow(
       settings.badge_mode,
@@ -1290,6 +1345,7 @@
       } catch (_) {
       }
       render();
+      if (id === "account") void refreshUnsentKept();
     }
     if (focus) {
       const el2 = byId(`tab-${id}`);
@@ -1571,6 +1627,8 @@
     notification_reaction: notificationReactionRow,
     notification_sound: notificationSoundRow,
     update_check_hours: updateCheckHoursRow,
+    unsent_retention_days: unsentRetentionRow,
+    unsent_messages_kept: unsentKeptRow,
     download_behavior: downloadBehaviorRow,
     tray_icon_style: trayIconStyleRow,
     autostart: autostartRow,
@@ -1638,6 +1696,9 @@
   };
   window.addEventListener("focus", refresh);
   window.addEventListener("focus", () => {
+    if (activeTab === "account") void refreshUnsentKept();
+  });
+  window.addEventListener("focus", () => {
     if (showsAccount() && messengerAccount.state) loadMessengerAccount();
   });
   window.addEventListener("focus", () => {
@@ -1691,6 +1752,7 @@
   };
   render();
   refresh();
+  if (activeTab === "account") void refreshUnsentKept();
   updateController.initialize(
     BOOT.install_mode ? { installMode: BOOT.install_mode, discovered: BOOT.discovered_update } : void 0
   ).catch((e) => {

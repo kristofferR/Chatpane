@@ -55,6 +55,18 @@ declare const chatpanePinnedChats: (
     | ({ account: string } & import("./messenger/lib/pinned-chats").PinChange),
 ) => Promise<unknown>;
 
+/** Ask native code for an account's kept unsent messages, or keep one;
+ * resolves with the account's copies (unsent_messages.rs). */
+declare const chatpaneUnsentMessages: (
+  request:
+    | { account: string; op: "list" }
+    | {
+        account: string;
+        op: "add";
+        message: import("./messenger/lib/unsent-messages").UnsentCopy;
+      },
+) => Promise<unknown>;
+
 declare const chatpaneMediaPlatform: "macos" | "windows" | "linux";
 type ChatpaneMediaPermissionState =
   | "unknown"
