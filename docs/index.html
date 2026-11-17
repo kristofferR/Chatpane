@@ -1446,6 +1446,8 @@
   }
   .key-row .sep { color: var(--muted); margin: 0 4px; font-weight: 600; }
   .key-row i { color: var(--muted); font-style: normal; }
+  /* Full screen is ⌃⌘F on a Mac and F11 on Windows and Linux. */
+  html[data-os] .key-row .mac-keys, html:not([data-os]) .key-row .pc-keys { display: none; }
 
 
   /* compact feature cards: icon beside the text, white on the tinted band,
@@ -2304,7 +2306,7 @@
             </svg>
           </span>
           <h3 data-i18n="priv.4.title">Privacy settings</h3>
-          <p data-i18n="priv.4.body">Hide that you're typing, hide names and photos for screen sharing, or hide message previews in notifications.</p>
+          <p data-i18n="priv.4.body">Hide that you're typing, hide names and photos for screen sharing, or hide message previews in notifications. Turn on Keep unsent messages to still see a message someone unsends, stored encrypted on your computer.</p>
         </article>
       </div>
     </div>
@@ -2348,6 +2350,8 @@
         <div class="key-row reveal" style="--d:.08s"><span data-i18n="keys.6">Hide names and avatars</span><span class="caps" dir="ltr"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>H</kbd></span></div>
         <div class="key-row reveal" style="--d:.02s"><span data-i18n="keys.7">Zoom in, out or reset</span><span class="caps" dir="ltr"><kbd>⌘</kbd><kbd>+</kbd><span class="sep">/</span><kbd>⌘</kbd><kbd>−</kbd><span class="sep">/</span><kbd>⌘</kbd><kbd>0</kbd></span></div>
         <div class="key-row reveal" style="--d:.08s"><span data-i18n="keys.8">Settings</span><span class="caps" dir="ltr"><kbd>⌘</kbd><kbd>,</kbd></span></div>
+        <div class="key-row reveal" style="--d:.02s"><span data-i18n="keys.9">Full screen</span><span class="caps mac-keys" dir="ltr"><kbd>⌃</kbd><kbd>⌘</kbd><kbd>F</kbd></span><span class="caps pc-keys" dir="ltr"><kbd>F11</kbd></span></div>
+        <div class="key-row reveal" style="--d:.08s"><span data-i18n="keys.10">Keyboard shortcuts</span><span class="caps" dir="ltr"><kbd>⌘</kbd><kbd>/</kbd></span></div>
       </div>
     </div>
   </section>
