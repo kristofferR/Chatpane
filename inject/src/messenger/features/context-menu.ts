@@ -535,9 +535,33 @@ export function initContextMenu() {
         ? (messageFor(target) ?? null)
         : null;
     const conversation = selected ? null : chatRow;
-    if (!items.length && !message && !conversation) return; // fall through to the native menu (text etc.)
+    if (!items.length && !message && !conversation) {
+      // Fall through to the webview's own menu (text etc.), which replaces a
+      // page-rendered one still open.
+      closeMenu();
+      return;
+    }
     prevent();
     if (selectedByClick && selection && !selection.isCollapsed) selection.collapseToEnd();
+    // This menu, native or page-rendered, replaces a page-rendered one still
+    // open. Capture the restore target before closeMenu()/menu creation shifts
+    // focus. The right-click target is usually a non-focusable image or span,
+    // so climb to the nearest focusable ancestor and fall back to whatever
+    // held focus before the menu opened — never a bare image that .focus()
+    // would silently no-op on, losing the user's place.
+    const focusableSelector =
+      'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]';
+    const previouslyFocused = document.activeElement;
+    // If a menu is already open and focus is inside it, closeMenu() is about
+    // to detach that item — reuse the open menu's own restore target instead
+    // of saving a node that .focus() can no longer reach.
+    const priorReturnFocus =
+      ctxMenu && nativeReflectApply(nativeContains, ctxMenu, [previouslyFocused])
+        ? ctxMenuReturnFocus
+        : previouslyFocused instanceof HTMLElement && previouslyFocused !== document.body
+          ? previouslyFocused
+          : null;
+    closeMenu();
     // The context-menu key reports no pointer on the message; pop up at it.
     // A keyboard-opened link menu anchors to the focused link itself.
     const keyboardPoint =
@@ -592,9 +616,11 @@ export function initContextMenu() {
         return;
       }
     }
+    let hasReactions = false;
     if (message) {
       const offer = await readAbandonably(() => readMessageOffer(message));
       if (request !== menuRequest) return;
+      hasReactions = offer.reactions.length > 0;
       for (let index = 0; index < offer.reactions.length; index += 1) {
         const reaction = offer.reactions[index];
         if (reaction)
@@ -638,11 +664,15 @@ export function initContextMenu() {
     // Wayland, so a keyboard-opened Linux menu stays in the page, where
     // arrows, Enter, and Escape work.
     const nativeTakesKeyboard = !keyboard || !isLinux;
+    // The quick reactions share one row. macOS and GTK menus can lay one
+    // out; a Windows menu cannot, so there the menu stays in the page.
+    const nativeShowsReactionRow = isMac || isLinux || !hasReactions;
     if (
       nativeShowContextMenu &&
       nativeItemsAreValid &&
       nativeImageCopyIsSafe &&
-      nativeTakesKeyboard
+      nativeTakesKeyboard &&
+      nativeShowsReactionRow
     ) {
       try {
         // GTK on Wayland cannot place a menu at the pointer once the click
@@ -661,23 +691,6 @@ export function initContextMenu() {
       }
     }
 
-    // Capture the restore target before closeMenu()/menu creation shifts
-    // focus. The right-click target is usually a non-focusable image or span,
-    // so climb to the nearest focusable ancestor and fall back to whatever
-    // held focus before the menu opened — never a bare image that .focus()
-    // would silently no-op on, losing the user's place.
-    const focusableSelector =
-      'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]';
-    const previouslyFocused = document.activeElement;
-    // If a menu is already open and focus is inside it, closeMenu() is about
-    // to detach that item — reuse the open menu's own restore target instead
-    // of saving a node that .focus() can no longer reach.
-    const priorReturnFocus =
-      ctxMenu && nativeReflectApply(nativeContains, ctxMenu, [previouslyFocused])
-        ? ctxMenuReturnFocus
-        : previouslyFocused instanceof HTMLElement && previouslyFocused !== document.body
-          ? previouslyFocused
-          : null;
     closeMenu();
     ctxMenuReturnFocus =
       (target.closest?.(focusableSelector) as HTMLElement | null) ?? priorReturnFocus;

@@ -101,6 +101,10 @@ futures-util = "0.3"
 # Apply the GlobalShortcuts portal activation token to GTK's native window
 # before revealing it, so Wayland compositors permit the focus transfer.
 gtk = "0.18"
+# The context menu is built with muda directly (the crate Tauri's menus wrap,
+# with Tauri's own features) to reach its GTK menu: the quick reactions sit in
+# one row of it.
+muda = { version = "0.20", default-features = false, features = ["gtk3"] }
 # Configure the WebKitGTK instance Tauri already embeds without adding another
 # WebKit build. Keep normal document caching, but use the smaller browser cache
 # model and opt out of the in-memory back/forward page cache.
@@ -128,8 +132,9 @@ objc2 = "0.6"
 security-framework = "3"
 # Start on System Startup as an "Open at Login" item (SMAppService, macOS 13+).
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
-# NSSound and NSBeep: Settings → Notification sound → Preview.
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["NSGraphics", "NSPasteboard", "NSRunningApplication", "NSSound", "NSWorkspace", "libc"] }
+# NSSound and NSBeep: Settings → Notification sound → Preview. NSMenu and the
+# drawing types: the quick reactions as a row of emoji in a message's menu.
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["NSAttributedString", "NSFont", "NSGraphics", "NSImage", "NSMenu", "NSMenuItem", "NSPasteboard", "NSRunningApplication", "NSSound", "NSStringDrawing", "NSWorkspace", "block2", "libc", "objc2-core-foundation"] }
 # Communication notifications: the sender's face and group name (Ref #366).
 objc2-intents = { version = "0.3.2", default-features = false, features = ["std", "INSendMessageIntent", "INIntent", "INPerson", "INPersonHandle", "INImage", "INInteraction", "INSpeakableString", "INOutgoingMessageType", "INIntentResponse", "INSendMessageAttachment", "block2"] }
 objc2-foundation = { version = "0.3", features = ["NSBundle", "NSData", "NSString", "NSValue", "NSObject", "NSDictionary", "NSArray", "NSSet", "NSURL", "NSError", "NSUserDefaults"] }
@@ -147,7 +152,8 @@ mac-notification-sys = "0.6"
 # The Dock menu (recent conversations): Tauri exposes no Dock-menu API, so the
 # NSMenu is built with muda directly (the same crate Tauri's menus wrap — same
 # version, shared event handler) and served via an `applicationDockMenu:` hook.
-# Menu events still flow through Tauri's regular menu-event plumbing.
+# Menu events still flow through Tauri's regular menu-event plumbing. The
+# context menu is built the same way, to reach its NSMenu.
 muda = "0.20"
 
 [target.'cfg(target_os = "windows")'.dependencies]

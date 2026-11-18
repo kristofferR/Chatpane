@@ -40,6 +40,8 @@ mod install_environment;
 mod keystore;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "linux")]
+mod linux_context_menu;
 #[cfg(any(target_os = "linux", test))]
 mod linux_startup;
 #[cfg(target_os = "linux")]
