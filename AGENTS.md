@@ -270,6 +270,18 @@ These traps are already worked around in code — don't redo them:
 
 ---
 
+## Windows taskbar icon — hard-won, do NOT re-litigate
+
+On Windows, Settings → Appearance → App icon goes through Chatpane's
+shortcuts: the taskbar draws the icon of the shortcut that carries the
+window's AppUserModelID (the pin, or the Start menu entry) and ignores the
+window's own icon. Why, what was tried and the waits it needs are in
+`src-tauri/src/windows/taskbar_icon.rs`. Test changes there on a real
+taskbar, pinned and unpinned, and restart Explorer between pinned runs,
+because it caches pin icons.
+
+---
+
 ## Current state
 
 v1.0.0 is released; `main` is the trunk. **Live work lives on GitHub, not here** —

@@ -1308,6 +1308,9 @@ pub fn run() {
                 if let Err(error) = app.deep_link().register(actions::URL_SCHEME) {
                     log::warn!("failed to register the chatpane:// protocol handler: {error}");
                 }
+                // Before the first window, so the taskbar files it under
+                // Chatpane's shortcuts and draws their icon.
+                crate::windows::taskbar_icon::set_app_id(app.handle());
                 // Register the toast display assets for installed and portable
                 // builds; the latter has no installer-stamped shortcut.
                 crate::windows::toast::init(app.handle());

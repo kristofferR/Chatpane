@@ -3,8 +3,10 @@
 //!
 //! macOS swaps the running Dock icon (`NSApplication.applicationIconImage`);
 //! the installed bundle icon is never rewritten, so updates can't leave a
-//! mismatched icon behind. Windows and Linux set the window icon, which is
-//! what the Windows taskbar shows; Linux launchers keep the installed icon.
+//! mismatched icon behind. Windows and Linux set the window icon. The Windows
+//! taskbar draws a shortcut's icon instead, so there the choice is also
+//! written into Chatpane's shortcuts (`windows/taskbar_icon.rs`). Linux
+//! launchers keep the installed icon.
 //! The unread badge is drawn separately on every platform, so it keeps
 //! working on every icon.
 
@@ -75,17 +77,13 @@ fn icon_png(icon: &str) -> Option<&'static [u8]> {
     }
 }
 
-fn chosen_png(s: &Settings) -> Option<&'static [u8]> {
-    icon_png(chosen_icon(s, is_dark))
-}
-
 /// Give one window the chosen icon. Windows and Linux only; on macOS the
 /// Dock icon is app-wide (see [`apply_app_icon`]).
 pub(crate) fn apply_window_icon(window: &WebviewWindow, s: &Settings) {
     #[cfg(not(target_os = "macos"))]
     {
-        let png = chosen_png(s).unwrap_or(COLOR_LIGHT);
-        match tauri::image::Image::from_bytes(png) {
+        let icon = chosen_icon(s, is_dark);
+        match tauri::image::Image::from_bytes(icon_png(icon).unwrap_or(COLOR_LIGHT)) {
             Ok(image) => {
                 if let Err(error) = window.set_icon(image) {
                     log::warn!("could not set the icon of {}: {error}", window.label());
@@ -93,6 +91,9 @@ pub(crate) fn apply_window_icon(window: &WebviewWindow, s: &Settings) {
             }
             Err(error) => log::warn!("bundled app icon did not decode: {error}"),
         }
+        // Tauri's set_icon only sets the small icon.
+        #[cfg(target_os = "windows")]
+        crate::windows::taskbar_icon::set_big_icon(window, icon);
     }
     #[cfg(target_os = "macos")]
     let _ = (window, s);
@@ -102,7 +103,7 @@ pub(crate) fn apply_window_icon(window: &WebviewWindow, s: &Settings) {
 pub(crate) fn apply_app_icon(app: &tauri::AppHandle, s: &Settings) {
     #[cfg(target_os = "macos")]
     {
-        let png = chosen_png(s);
+        let png = icon_png(chosen_icon(s, is_dark));
         let _ = app.run_on_main_thread(move || set_dock_icon(png));
     }
     #[cfg(not(target_os = "macos"))]
@@ -112,6 +113,8 @@ pub(crate) fn apply_app_icon(app: &tauri::AppHandle, s: &Settings) {
             apply_window_icon(&window, s);
         }
     }
+    #[cfg(target_os = "windows")]
+    crate::windows::taskbar_icon::show(app, chosen_icon(s, is_dark));
 }
 
 /// Re-apply after the system switches light/dark, for a dark-mode icon.
