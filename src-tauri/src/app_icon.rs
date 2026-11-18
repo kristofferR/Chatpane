@@ -5,8 +5,9 @@
 //! the installed bundle icon is never rewritten, so updates can't leave a
 //! mismatched icon behind. Windows and Linux set the window icon. The Windows
 //! taskbar draws a shortcut's icon instead, so there the choice is also
-//! written into Chatpane's shortcuts (`windows/taskbar_icon.rs`). Linux
-//! launchers keep the installed icon.
+//! written into Chatpane's shortcuts (`windows/taskbar_icon.rs`). On Linux
+//! the window icon shows under X11; Wayland has none, and launchers keep the
+//! installed icon.
 //! The unread badge is drawn separately on every platform, so it keeps
 //! working on every icon.
 
@@ -15,12 +16,28 @@ use tauri::{Manager, WebviewWindow};
 use crate::settings::Settings;
 use crate::window::is_dark;
 
+// The icons as PNGs, 512 px. Linux gets 256 px ones: GTK's X11 backend
+// silently drops a window icon of 512×512 or more, and the window is left
+// with no icon at all.
+#[cfg(not(target_os = "linux"))]
+macro_rules! png {
+    ($icon:literal) => {
+        include_bytes!(concat!("../icons/app-icon/", $icon, ".png"))
+    };
+}
+#[cfg(target_os = "linux")]
+macro_rules! png {
+    ($icon:literal) => {
+        include_bytes!(concat!("../icons/app-icon/", $icon, "-256.png"))
+    };
+}
+
 // macOS restores the bundle icon instead of loading this one.
 #[cfg_attr(all(target_os = "macos", not(test)), allow(dead_code))]
-const COLOR_LIGHT: &[u8] = include_bytes!("../icons/app-icon/color-light.png");
-const COLOR_DARK: &[u8] = include_bytes!("../icons/app-icon/color-dark.png");
-const MONO_LIGHT: &[u8] = include_bytes!("../icons/app-icon/mono-light.png");
-const MONO_DARK: &[u8] = include_bytes!("../icons/app-icon/mono-dark.png");
+const COLOR_LIGHT: &[u8] = png!("color-light");
+const COLOR_DARK: &[u8] = png!("color-dark");
+const MONO_LIGHT: &[u8] = png!("mono-light");
+const MONO_DARK: &[u8] = png!("mono-dark");
 
 /// The icons Settings offers, as stored in `app_icon` and `app_icon_dark`.
 pub(crate) const APP_ICONS: [&str; 4] = ["color-light", "color-dark", "mono-light", "mono-dark"];
@@ -234,9 +251,11 @@ mod tests {
 
     #[test]
     fn every_bundled_icon_decodes() {
+        // GTK's X11 backend only takes a window icon below 512×512.
+        let size = if cfg!(target_os = "linux") { 256 } else { 512 };
         for png in [COLOR_LIGHT, COLOR_DARK, MONO_LIGHT, MONO_DARK] {
             let image = tauri::image::Image::from_bytes(png).unwrap();
-            assert_eq!((image.width(), image.height()), (512, 512));
+            assert_eq!((image.width(), image.height()), (size, size));
         }
     }
 }
