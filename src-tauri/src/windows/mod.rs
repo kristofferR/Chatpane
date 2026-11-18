@@ -10,3 +10,6 @@ pub(crate) mod webview2;
 // The jump list is pure Win32 COM with no OS-independent helpers to test.
 #[cfg(target_os = "windows")]
 pub(crate) mod jumplist;
+// Compiles for tests on any OS, for the rule that picks a shortcut's icon.
+#[cfg(any(target_os = "windows", test))]
+pub(crate) mod taskbar_icon;

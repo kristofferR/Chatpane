@@ -3,8 +3,11 @@
 //!
 //! macOS swaps the running Dock icon (`NSApplication.applicationIconImage`);
 //! the installed bundle icon is never rewritten, so updates can't leave a
-//! mismatched icon behind. Windows and Linux set the window icon, which is
-//! what the Windows taskbar shows; Linux launchers keep the installed icon.
+//! mismatched icon behind. Windows and Linux set the window icon. The Windows
+//! taskbar draws a shortcut's icon instead, so there the choice is also
+//! written into Chatpane's shortcuts (`windows/taskbar_icon.rs`). On Linux
+//! the window icon shows under X11; Wayland has none, and launchers keep the
+//! installed icon.
 //! The unread badge is drawn separately on every platform, so it keeps
 //! working on every icon.
 
@@ -13,12 +16,28 @@ use tauri::{Manager, WebviewWindow};
 use crate::settings::Settings;
 use crate::window::is_dark;
 
+// The icons as PNGs, 512 px. Linux gets 256 px ones: GTK's X11 backend
+// silently drops a window icon of 512×512 or more, and the window is left
+// with no icon at all.
+#[cfg(not(target_os = "linux"))]
+macro_rules! png {
+    ($icon:literal) => {
+        include_bytes!(concat!("../icons/app-icon/", $icon, ".png"))
+    };
+}
+#[cfg(target_os = "linux")]
+macro_rules! png {
+    ($icon:literal) => {
+        include_bytes!(concat!("../icons/app-icon/", $icon, "-256.png"))
+    };
+}
+
 // macOS restores the bundle icon instead of loading this one.
 #[cfg_attr(all(target_os = "macos", not(test)), allow(dead_code))]
-const COLOR_LIGHT: &[u8] = include_bytes!("../icons/app-icon/color-light.png");
-const COLOR_DARK: &[u8] = include_bytes!("../icons/app-icon/color-dark.png");
-const MONO_LIGHT: &[u8] = include_bytes!("../icons/app-icon/mono-light.png");
-const MONO_DARK: &[u8] = include_bytes!("../icons/app-icon/mono-dark.png");
+const COLOR_LIGHT: &[u8] = png!("color-light");
+const COLOR_DARK: &[u8] = png!("color-dark");
+const MONO_LIGHT: &[u8] = png!("mono-light");
+const MONO_DARK: &[u8] = png!("mono-dark");
 
 /// The icons Settings offers, as stored in `app_icon` and `app_icon_dark`.
 pub(crate) const APP_ICONS: [&str; 4] = ["color-light", "color-dark", "mono-light", "mono-dark"];
@@ -75,17 +94,13 @@ fn icon_png(icon: &str) -> Option<&'static [u8]> {
     }
 }
 
-fn chosen_png(s: &Settings) -> Option<&'static [u8]> {
-    icon_png(chosen_icon(s, is_dark))
-}
-
 /// Give one window the chosen icon. Windows and Linux only; on macOS the
 /// Dock icon is app-wide (see [`apply_app_icon`]).
 pub(crate) fn apply_window_icon(window: &WebviewWindow, s: &Settings) {
     #[cfg(not(target_os = "macos"))]
     {
-        let png = chosen_png(s).unwrap_or(COLOR_LIGHT);
-        match tauri::image::Image::from_bytes(png) {
+        let icon = chosen_icon(s, is_dark);
+        match tauri::image::Image::from_bytes(icon_png(icon).unwrap_or(COLOR_LIGHT)) {
             Ok(image) => {
                 if let Err(error) = window.set_icon(image) {
                     log::warn!("could not set the icon of {}: {error}", window.label());
@@ -93,6 +108,9 @@ pub(crate) fn apply_window_icon(window: &WebviewWindow, s: &Settings) {
             }
             Err(error) => log::warn!("bundled app icon did not decode: {error}"),
         }
+        // Tauri's set_icon only sets the small icon.
+        #[cfg(target_os = "windows")]
+        crate::windows::taskbar_icon::set_big_icon(window, icon);
     }
     #[cfg(target_os = "macos")]
     let _ = (window, s);
@@ -102,7 +120,7 @@ pub(crate) fn apply_window_icon(window: &WebviewWindow, s: &Settings) {
 pub(crate) fn apply_app_icon(app: &tauri::AppHandle, s: &Settings) {
     #[cfg(target_os = "macos")]
     {
-        let png = chosen_png(s);
+        let png = icon_png(chosen_icon(s, is_dark));
         let _ = app.run_on_main_thread(move || set_dock_icon(png));
     }
     #[cfg(not(target_os = "macos"))]
@@ -112,6 +130,8 @@ pub(crate) fn apply_app_icon(app: &tauri::AppHandle, s: &Settings) {
             apply_window_icon(&window, s);
         }
     }
+    #[cfg(target_os = "windows")]
+    crate::windows::taskbar_icon::show(app, chosen_icon(s, is_dark));
 }
 
 /// Re-apply after the system switches light/dark, for a dark-mode icon.
@@ -231,9 +251,11 @@ mod tests {
 
     #[test]
     fn every_bundled_icon_decodes() {
+        // GTK's X11 backend only takes a window icon below 512×512.
+        let size = if cfg!(target_os = "linux") { 256 } else { 512 };
         for png in [COLOR_LIGHT, COLOR_DARK, MONO_LIGHT, MONO_DARK] {
             let image = tauri::image::Image::from_bytes(png).unwrap();
-            assert_eq!((image.width(), image.height()), (512, 512));
+            assert_eq!((image.width(), image.height()), (size, size));
         }
     }
 }
