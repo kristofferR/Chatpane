@@ -6048,9 +6048,16 @@ ${button.innerHTML}`)
       const selected = !selectedByClick && selection !== null && !selection.isCollapsed && selection.containsNode(target, true);
       const message = (imgSrc || vidSrc || !items.length) && !(selected && !items.length) ? messageFor(target) ?? null : null;
       const conversation = selected ? null : chatRow;
-      if (!items.length && !message && !conversation) return;
+      if (!items.length && !message && !conversation) {
+        closeMenu();
+        return;
+      }
       prevent();
       if (selectedByClick && selection && !selection.isCollapsed) selection.collapseToEnd();
+      const focusableSelector = 'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]';
+      const previouslyFocused = document.activeElement;
+      const priorReturnFocus = ctxMenu && nativeReflectApply3(nativeContains, ctxMenu, [previouslyFocused]) ? ctxMenuReturnFocus : previouslyFocused instanceof HTMLElement && previouslyFocused !== document.body ? previouslyFocused : null;
+      closeMenu();
       const keyboardPoint = message || keyboard ? keyboardMenuPoint(
         contextPoint,
         rectOf(target),
@@ -6098,9 +6105,11 @@ ${button.innerHTML}`)
           return;
         }
       }
+      let hasReactions = false;
       if (message) {
         const offer = await readAbandonably(() => readMessageOffer(message));
         if (request3 !== menuRequest) return;
+        hasReactions = offer.reactions.length > 0;
         for (let index = 0; index < offer.reactions.length; index += 1) {
           const reaction = offer.reactions[index];
           if (reaction)
@@ -6133,7 +6142,8 @@ ${button.innerHTML}`)
       }
       const nativeImageCopyIsSafe = isMac2 || !imgSrc;
       const nativeTakesKeyboard = !keyboard || !isLinux;
-      if (nativeShowContextMenu && nativeItemsAreValid && nativeImageCopyIsSafe && nativeTakesKeyboard) {
+      const nativeShowsReactionRow = isMac2 || isLinux || !hasReactions;
+      if (nativeShowContextMenu && nativeItemsAreValid && nativeImageCopyIsSafe && nativeTakesKeyboard && nativeShowsReactionRow) {
         try {
           const zoom = (Number(window.__CHATPANE_SETTINGS__?.zoom) || 100) / 100;
           const point = keyboardPoint ?? (isLinux ? [contextPoint.x, contextPoint.y] : null);
@@ -6145,9 +6155,6 @@ ${button.innerHTML}`)
         } catch {
         }
       }
-      const focusableSelector = 'a[href], button, input, select, textarea, [tabindex], [contenteditable="true"]';
-      const previouslyFocused = document.activeElement;
-      const priorReturnFocus = ctxMenu && nativeReflectApply3(nativeContains, ctxMenu, [previouslyFocused]) ? ctxMenuReturnFocus : previouslyFocused instanceof HTMLElement && previouslyFocused !== document.body ? previouslyFocused : null;
       closeMenu();
       ctxMenuReturnFocus = target.closest?.(focusableSelector) ?? priorReturnFocus;
       ctxMenu = nativeReflectApply3(nativeCreateElement, document, ["div"]);

@@ -19,6 +19,10 @@ use crate::APP_TITLE;
 use crate::actions::{AppAction, NEW_CONVERSATION_JS, run_app_action, validated_thread_path};
 use crate::export::Format as ExportFormat;
 use crate::i18n::t;
+#[cfg(target_os = "linux")]
+use crate::linux_context_menu as reaction_row;
+#[cfg(target_os = "macos")]
+use crate::macos::context_menu as reaction_row;
 #[cfg(target_os = "macos")]
 use crate::macos::dock::{DOCK_MENU_KEEPALIVE, DOCK_NS_MENU};
 #[cfg(target_os = "macos")]
@@ -1016,8 +1020,8 @@ pub(crate) struct NativeContextMenuItem {
     pub(crate) label: String,
     pub(crate) action: String,
     pub(crate) value: Option<String>,
-    /// A quick reaction: shown in the React submenu, checked when it is
-    /// already the user's reaction to the message.
+    /// A quick reaction: one of a row of emoji (a React submenu on Windows),
+    /// checked when it is already the user's reaction to the message.
     #[serde(default)]
     pub(crate) reaction: bool,
     #[serde(default)]
@@ -1175,17 +1179,18 @@ pub(crate) fn show_native_context_menu(
         log::warn!("chatpane:context-menu target window {label:?} is gone");
         return false;
     };
-    let menu = match Menu::new(app) {
+    let entries = context_menu_entries(label, &items);
+    #[cfg(not(target_os = "windows"))]
+    let built = build_context_menu(&entries);
+    #[cfg(target_os = "windows")]
+    let built = build_context_menu(app, &entries);
+    let menu = match built {
         Ok(menu) => menu,
         Err(error) => {
-            log::warn!("failed to create native media context menu: {error}");
+            log::warn!("failed to build native context menu: {error}");
             return false;
         }
     };
-    if let Err(error) = append_context_menu_items(app, &menu, label, &items) {
-        log::warn!("failed to build native context menu: {error}");
-        return false;
-    }
     {
         let state = app.state::<AppState>();
         let mut copies = state.context_menu_copy_values.lock().unwrap();
@@ -1230,6 +1235,9 @@ pub(crate) fn show_native_context_menu(
     on_presented();
     // A keyboard-opened menu has no pointer to pop up at; the page passes the
     // focused message's position instead.
+    #[cfg(not(target_os = "windows"))]
+    let shown = reaction_row::popup(&window, &menu, position);
+    #[cfg(target_os = "windows")]
     let shown = match position {
         Some(position) => window.popup_menu_at(&menu, position),
         None => window.popup_menu(&menu),
@@ -1255,17 +1263,31 @@ pub(crate) fn show_native_context_menu(
     }
 }
 
-/// Media rows, then (after a separator) a React submenu and the message's
-/// actions; or a conversation's rows. Item ids carry only the window and the
+/// One row of a native context menu.
+#[derive(Debug, PartialEq)]
+pub(crate) struct ContextMenuRow {
+    pub(crate) id: String,
+    pub(crate) text: String,
+    pub(crate) checked: bool,
+}
+
+/// A native context menu's top-level entries, in order. Each platform builds
+/// its own menu from them.
+#[derive(Debug, PartialEq)]
+pub(crate) enum ContextMenuEntry {
+    Separator,
+    Row(ContextMenuRow),
+    /// Quick reactions: one row of emoji, or a React submenu on Windows.
+    Reactions(Vec<ContextMenuRow>),
+    /// The "Export chat" submenu, one row per format.
+    Export(Vec<ContextMenuRow>),
+}
+
+/// Media rows, then (after a separator) the quick reactions and the message's
+/// actions; or a conversation's rows. Row ids carry only the window and the
 /// opaque action token.
-fn append_context_menu_items(
-    app: &tauri::AppHandle,
-    menu: &Menu<tauri::Wry>,
-    label: &str,
-    items: &[NativeContextMenuItem],
-) -> tauri::Result<()> {
-    let id = |item: &NativeContextMenuItem| format!("chatpane-context:{label}:{}", item.action);
-    // Media rows, the React submenu, message actions, pinning, conversation
+fn context_menu_entries(label: &str, items: &[NativeContextMenuItem]) -> Vec<ContextMenuEntry> {
+    // Media rows, quick reactions, message actions, pinning, conversation
     // actions, and conversation export each form a group.
     let group = |item: &NativeContextMenuItem| {
         if item.reaction {
@@ -1282,47 +1304,107 @@ fn append_context_menu_items(
             0
         }
     };
-    let mut reactions: Option<tauri::menu::Submenu<tauri::Wry>> = None;
-    let mut exports: Option<tauri::menu::Submenu<tauri::Wry>> = None;
-    // The group's submenu, created on its first row.
-    let submenu = |slot: &mut Option<tauri::menu::Submenu<tauri::Wry>>, title: &str| {
-        if let Some(submenu) = slot {
-            return Ok(submenu.clone());
-        }
-        let submenu = SubmenuBuilder::new(app, menu_label(title)).build()?;
-        menu.append(&submenu)?;
-        *slot = Some(submenu.clone());
-        tauri::Result::Ok(submenu)
-    };
+    let mut entries = Vec::new();
     let mut previous = None;
     for item in items {
         if previous.is_some_and(|previous| previous != group(item)) {
-            menu.append(&tauri::menu::PredefinedMenuItem::separator(app)?)?;
+            entries.push(ContextMenuEntry::Separator);
         }
         previous = Some(group(item));
+        let row = |text: String| ContextMenuRow {
+            id: format!("chatpane-context:{label}:{}", item.action),
+            text,
+            checked: item.checked,
+        };
         if item.reaction {
-            submenu(&mut reactions, t("shared.context.react"))?.append(
-                &tauri::menu::CheckMenuItemBuilder::new(&item.label)
-                    .id(id(item))
-                    .checked(item.checked)
-                    .build(app)?,
-            )?;
+            let row = row(item.label.clone());
+            match entries.last_mut() {
+                Some(ContextMenuEntry::Reactions(rows)) => rows.push(row),
+                _ => entries.push(ContextMenuEntry::Reactions(vec![row])),
+            }
         } else if let Some(format) = CHAT_EXPORT_CONTEXT_MENU_KEYS
             .iter()
             .position(|key| *key == item.label)
             .and_then(|index| CHAT_EXPORT_FORMATS.get(index))
         {
-            submenu(&mut exports, t("menu.context.export_chat"))?
-                .append(&MenuItemBuilder::new(*format).id(id(item)).build(app)?)?;
+            let row = row(format.to_string());
+            match entries.last_mut() {
+                Some(ContextMenuEntry::Export(rows)) => rows.push(row),
+                _ => entries.push(ContextMenuEntry::Export(vec![row])),
+            }
         } else if let Some(key) = context_menu_key(&item.label) {
-            menu.append(
-                &MenuItemBuilder::new(menu_label(t(key)))
-                    .id(id(item))
-                    .build(app)?,
-            )?;
+            entries.push(ContextMenuEntry::Row(row(menu_label(t(key)))));
         }
     }
-    Ok(())
+    entries
+}
+
+/// The menu for `entries`, with the reactions as one row of emoji. It is
+/// built with muda directly, as the Dock menu is: Tauri's menus keep the
+/// platform's own menu private, and laying out that row needs it.
+#[cfg(not(target_os = "windows"))]
+fn build_context_menu(entries: &[ContextMenuEntry]) -> tauri::Result<muda::Menu> {
+    let menu = muda::Menu::new();
+    for entry in entries {
+        match entry {
+            ContextMenuEntry::Separator => menu.append(&muda::PredefinedMenuItem::separator())?,
+            ContextMenuEntry::Row(row) => {
+                menu.append(&muda::MenuItem::with_id(&row.id, &row.text, true, None))?;
+            }
+            ContextMenuEntry::Reactions(rows) => reaction_row::append_reactions(&menu, rows)?,
+            ContextMenuEntry::Export(rows) => {
+                let submenu = muda::Submenu::new(menu_label(t("menu.context.export_chat")), true);
+                for row in rows {
+                    submenu.append(&muda::MenuItem::with_id(&row.id, &row.text, true, None))?;
+                }
+                menu.append(&submenu)?;
+            }
+        }
+    }
+    Ok(menu)
+}
+
+/// The menu for `entries`, with the reactions and export formats as submenus:
+/// a Windows menu has no rows of items. The page keeps a menu that has
+/// reactions to itself there, so this submenu is only a fallback.
+#[cfg(target_os = "windows")]
+fn build_context_menu(
+    app: &tauri::AppHandle,
+    entries: &[ContextMenuEntry],
+) -> tauri::Result<Menu<tauri::Wry>> {
+    let menu = Menu::new(app)?;
+    for entry in entries {
+        match entry {
+            ContextMenuEntry::Separator => {
+                menu.append(&tauri::menu::PredefinedMenuItem::separator(app)?)?;
+            }
+            ContextMenuEntry::Row(row) => {
+                menu.append(&MenuItemBuilder::new(&row.text).id(&row.id).build(app)?)?;
+            }
+            ContextMenuEntry::Reactions(rows) => {
+                let submenu =
+                    SubmenuBuilder::new(app, menu_label(t("shared.context.react"))).build()?;
+                for row in rows {
+                    submenu.append(
+                        &tauri::menu::CheckMenuItemBuilder::new(&row.text)
+                            .id(&row.id)
+                            .checked(row.checked)
+                            .build(app)?,
+                    )?;
+                }
+                menu.append(&submenu)?;
+            }
+            ContextMenuEntry::Export(rows) => {
+                let submenu =
+                    SubmenuBuilder::new(app, menu_label(t("menu.context.export_chat"))).build()?;
+                for row in rows {
+                    submenu.append(&MenuItemBuilder::new(&row.text).id(&row.id).build(app)?)?;
+                }
+                menu.append(&submenu)?;
+            }
+        }
+    }
+    Ok(menu)
 }
 
 fn context_menu_action(id: &str) -> Option<(&str, &str)> {
@@ -1789,6 +1871,46 @@ mod tests {
         // An action is never checked.
         message[2].checked = true;
         assert!(!valid_context_menu_items(&message));
+    }
+
+    #[test]
+    fn context_menu_entries_group_reactions_and_export_formats() {
+        let row = |action: char, text: &str, checked| ContextMenuRow {
+            id: format!("chatpane-context:main:{}", action.to_string().repeat(32)),
+            text: text.into(),
+            checked,
+        };
+        let mut message = vec![
+            context_item("shared.context.download_video", '1'),
+            reaction_item("❤️", '2'),
+            reaction_item("👍", '3'),
+            context_item("shared.context.reply", '4'),
+        ];
+        message[2].checked = true;
+        assert_eq!(
+            context_menu_entries("main", &message),
+            vec![
+                ContextMenuEntry::Row(row('1', t("shared.context.download_video"), false)),
+                ContextMenuEntry::Separator,
+                ContextMenuEntry::Reactions(vec![row('2', "❤️", false), row('3', "👍", true)]),
+                ContextMenuEntry::Separator,
+                ContextMenuEntry::Row(row('4', t("shared.context.reply"), false)),
+            ]
+        );
+
+        let chat = [
+            context_item("shared.context.archive_chat", '1'),
+            context_item("shared.context.export_chat_html", '2'),
+            context_item("shared.context.export_chat_json", '3'),
+        ];
+        assert_eq!(
+            context_menu_entries("main", &chat),
+            vec![
+                ContextMenuEntry::Row(row('1', t("shared.context.archive_chat"), false)),
+                ContextMenuEntry::Separator,
+                ContextMenuEntry::Export(vec![row('2', "HTML…", false), row('3', "JSON…", false)]),
+            ]
+        );
     }
 
     #[test]
