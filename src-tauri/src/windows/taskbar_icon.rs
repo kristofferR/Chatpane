@@ -68,7 +68,9 @@ pub(crate) fn set_app_id(app: &tauri::AppHandle) {
     let id = match with_com(|| unsafe { pinned_app_id(app) }) {
         Some(None) => return,
         Some(Some(id)) => id,
-        None => app.config().identifier.clone(),
+        // Not the running identifier: that is Carrier's while its data
+        // couldn't be moved, and the installer stamps Chatpane's.
+        None => crate::identity::IDENTIFIER.to_owned(),
     };
     let id = windows::core::HSTRING::from(id);
     // SAFETY: a NUL-terminated string that outlives the call.
@@ -162,16 +164,14 @@ pub(crate) fn show(app: &tauri::AppHandle, icon: &str) {
     static SHOWN: Mutex<Option<String>> = Mutex::new(None);
     static WORK: Mutex<()> = Mutex::new(());
 
-    {
-        let mut shown = SHOWN.lock().unwrap();
-        if shown.as_deref() == Some(icon) {
-            return;
-        }
-        *shown = Some(icon.to_owned());
+    if SHOWN.lock().unwrap().as_deref() == Some(icon) {
+        return;
     }
+    // Before the icon counts as shown, so a failed write is tried again.
     let Ok(file) = icon_file(app, icon) else {
         return;
     };
+    *SHOWN.lock().unwrap() = Some(icon.to_owned());
     let (app, icon) = (app.clone(), icon.to_owned());
     let spawned = std::thread::Builder::new()
         .name("chatpane-shortcut-icons".into())
@@ -196,6 +196,8 @@ pub(crate) fn show(app: &tauri::AppHandle, icon: &str) {
         });
     if let Err(error) = spawned {
         log::warn!("failed to start the shortcut icon worker: {error}");
+        // Not shown after all: the next call tries again.
+        SHOWN.lock().unwrap().take();
     }
 }
 
@@ -440,7 +442,8 @@ unsafe fn refresh_taskbar_buttons(app: &tauri::AppHandle) {
         IPropertyStore, SHGetPropertyStoreForWindow,
     };
 
-    let id = app.config().identifier.as_str();
+    // Only run without a pin, so the process has the installer's ID.
+    let id = crate::identity::IDENTIFIER;
     // SAFETY: shell COM on the caller's COM-initialized thread. A window
     // closed meanwhile just fails its calls.
     unsafe {
