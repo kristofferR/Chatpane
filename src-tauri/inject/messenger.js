@@ -17434,6 +17434,7 @@ ${text2}`)) {
   // inject/src/messenger/lib/media-viewer.ts
   var MEDIA_VIEWER_ATTR = "data-chatpane-media-viewer";
   var DIALOG = '[role="dialog"]';
+  var SURFACE = '[role="main"]';
   var HIDDEN = '[hidden], [aria-hidden="true"], [inert]';
   function isMediaViewerShape(shape) {
     if (shape.excluded || !shape.overlay || !shape.hasMedia) return false;
@@ -17446,32 +17447,45 @@ ${text2}`)) {
     const height = viewport.bottom - viewport.top;
     return width2 > 0 && height > 0 && visible.right - visible.left >= width2 * 0.75 && visible.bottom - visible.top >= height * 0.7;
   }
-  function isVisible(element2) {
-    if (element2.closest(HIDDEN)) return false;
-    const style = getComputedStyle(element2);
+  function isRendered(element2) {
     const rect = element2.getBoundingClientRect();
-    return style.visibility === "visible" && rect.width > 0 && rect.height > 0;
+    return getComputedStyle(element2).visibility === "visible" && rect.width > 0 && rect.height > 0;
   }
-  function isMediaViewerDialog(dialog) {
-    if (!isVisible(dialog)) return false;
+  function isVisible(element2) {
+    return !element2.closest(HIDDEN) && isRendered(element2);
+  }
+  function mediaViewerCandidates(surface) {
+    const candidates = new Set(document.querySelectorAll(DIALOG));
+    const hidden = surface?.closest(HIDDEN);
+    for (const layer of hidden?.parentElement?.children ?? []) {
+      if (layer !== hidden && layer instanceof HTMLElement) candidates.add(layer);
+    }
+    return candidates;
+  }
+  function ownsViewerElement(viewer, element2) {
+    return (element2.closest(DIALOG) ?? viewer) === viewer;
+  }
+  function isMediaViewer(candidate, surface) {
+    if (!isVisible(candidate)) return false;
     const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
-    const rect = dialog.getBoundingClientRect();
+    const rect = candidate.getBoundingClientRect();
     if (!coversViewport(rect, viewport)) return false;
-    let overlay = dialog.getAttribute("aria-modal") === "true";
-    let excluded = !!dialog.closest("[data-chatpane-shortcuts-overlay]");
-    for (let ancestor = dialog; ancestor; ancestor = ancestor.parentElement) {
+    let overlay = !(surface && isVisible(surface)) || candidate.getAttribute("aria-modal") === "true";
+    let excluded = !!candidate.closest("[data-chatpane-shortcuts-overlay]");
+    for (let ancestor = candidate; ancestor; ancestor = ancestor.parentElement) {
       const position = getComputedStyle(ancestor).position;
       if (position === "fixed" || position === "absolute") overlay = true;
     }
-    const owns = (element2) => element2.closest(DIALOG) === dialog;
-    excluded || (excluded = [...dialog.querySelectorAll('[role="navigation"], [contenteditable="true"]')].some(
-      owns
-    ));
+    const owns = (element2) => ownsViewerElement(candidate, element2);
+    const shows = (element2) => owns(element2) && isRendered(element2);
+    excluded || (excluded = [
+      ...candidate.querySelectorAll('[role="navigation"], [contenteditable="true"]')
+    ].some(owns));
     if (excluded || !overlay) return false;
     const media = [
-      ...dialog.querySelectorAll("img, video")
+      ...candidate.querySelectorAll("img, video")
     ].filter((element2) => {
-      if (!owns(element2) || !isVisible(element2)) return false;
+      if (!shows(element2)) return false;
       const bounds = element2.getBoundingClientRect();
       const visible = intersectImageClips(intersectImageClips(bounds, rect), viewport);
       const width2 = (visible.right - visible.left) / Math.min(rect.width, viewport.right);
@@ -17484,9 +17498,7 @@ ${text2}`)) {
       overlay,
       excluded,
       hasMedia: media.length > 0,
-      hasDownload: [...dialog.querySelectorAll("a[download]")].some(
-        (element2) => owns(element2) && isVisible(element2)
-      ),
+      hasDownload: [...candidate.querySelectorAll("a[download]")].some(shows),
       hasVideoControls: media.some(
         (element2) => element2 instanceof HTMLVideoElement && element2.controls
       )
@@ -17528,9 +17540,9 @@ ${text2}`)) {
     }
     return true;
   };
-  var actionGroupFor = (download, dialog) => {
+  var actionGroupFor = (download, viewer) => {
     let candidate = download;
-    for (let parent = download.parentElement; parent && parent !== dialog; parent = parent.parentElement) {
+    for (let parent = download.parentElement; parent && parent !== viewer; parent = parent.parentElement) {
       const rect = parent.getBoundingClientRect();
       const controls = visibleControls(parent);
       if (controls.length >= 2 && rect.width <= 240 && rect.height <= 96) return parent;
@@ -17542,23 +17554,27 @@ ${text2}`)) {
     let frame = 0;
     let viewers = /* @__PURE__ */ new Set();
     let markedControls = /* @__PURE__ */ new Set();
-    let observedDialogs = /* @__PURE__ */ new Set();
+    let candidates = /* @__PURE__ */ new Set();
+    let surface = null;
     const refresh = () => {
       frame = 0;
-      const dialogs = new Set(document.querySelectorAll(DIALOG2));
-      for (const dialog of observedDialogs) {
-        if (!dialogs.has(dialog)) resizeObserver.unobserve(dialog);
+      surface = document.querySelector(SURFACE);
+      const nextCandidates = mediaViewerCandidates(surface);
+      for (const candidate of candidates) {
+        if (!nextCandidates.has(candidate)) resizeObserver.unobserve(candidate);
       }
-      for (const dialog of dialogs) {
-        if (!observedDialogs.has(dialog)) resizeObserver.observe(dialog);
+      for (const candidate of nextCandidates) {
+        if (!candidates.has(candidate)) resizeObserver.observe(candidate);
       }
-      observedDialogs = dialogs;
-      const nextViewers = new Set([...dialogs].filter(isMediaViewerDialog));
-      for (const dialog of viewers) {
-        if (!nextViewers.has(dialog)) dialog.removeAttribute(MEDIA_VIEWER_ATTR);
+      candidates = nextCandidates;
+      const nextViewers = new Set(
+        [...candidates].filter((candidate) => isMediaViewer(candidate, surface))
+      );
+      for (const viewer of viewers) {
+        if (!nextViewers.has(viewer)) viewer.removeAttribute(MEDIA_VIEWER_ATTR);
       }
-      for (const dialog of nextViewers) {
-        if (!dialog.hasAttribute(MEDIA_VIEWER_ATTR)) dialog.setAttribute(MEDIA_VIEWER_ATTR, "");
+      for (const viewer of nextViewers) {
+        if (!viewer.hasAttribute(MEDIA_VIEWER_ATTR)) viewer.setAttribute(MEDIA_VIEWER_ATTR, "");
       }
       viewers = nextViewers;
       reportMediaViewer(viewers.size > 0);
@@ -17574,10 +17590,10 @@ ${text2}`)) {
             markedControls.add(banner);
           }
         }
-        for (const dialog of viewers) {
-          for (const download of dialog.querySelectorAll("a[download]")) {
-            if (download.closest(DIALOG2) !== dialog) continue;
-            const group = actionGroupFor(download, dialog);
+        for (const viewer of viewers) {
+          for (const download of viewer.querySelectorAll("a[download]")) {
+            if (!ownsViewerElement(viewer, download)) continue;
+            const group = actionGroupFor(download, viewer);
             if (applyOffset(
               group,
               visibleControls(group).map((rect) => rect.top),
@@ -17599,11 +17615,11 @@ ${text2}`)) {
       if (!frame) frame = requestAnimationFrame(refresh);
     };
     const resizeObserver = new ResizeObserver(schedule);
-    const affectsControls = (element2) => !!element2.closest(`${DIALOG2}, ${BANNER}`) || [...observedDialogs, ...markedControls].some((control) => element2.contains(control));
+    const affectsControls = (element2) => element2.matches(SURFACE) || !!element2.closest(`${DIALOG2}, ${BANNER}`) || [...candidates].some((candidate) => candidate.contains(element2)) || [...candidates, ...markedControls, surface].some((tracked) => element2.contains(tracked));
     new MutationObserver((records) => {
       if (records.some(
         (record4) => record4.target instanceof Element && affectsControls(record4.target) || record4.type === "childList" && [...record4.addedNodes, ...record4.removedNodes].some(
-          (node) => node instanceof Element && (affectsControls(node) || node.querySelector(`${DIALOG2}, ${BANNER}`))
+          (node) => node instanceof Element && (affectsControls(node) || node.querySelector(`${DIALOG2}, ${BANNER}, ${SURFACE}`))
         )
       ))
         schedule();
@@ -17624,7 +17640,7 @@ ${text2}`)) {
       ]
     });
     const mediaLoaded = (event) => {
-      if (event.target instanceof Element && event.target.closest(DIALOG2)) schedule();
+      if (event.target instanceof Element && affectsControls(event.target)) schedule();
     };
     document.addEventListener("load", mediaLoaded, true);
     document.addEventListener("loadedmetadata", mediaLoaded, true);

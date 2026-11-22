@@ -2,11 +2,14 @@ import { type ImageRect, intersectImageClips } from "./emoji-images";
 
 export const MEDIA_VIEWER_ATTR = "data-chatpane-media-viewer";
 const DIALOG = '[role="dialog"]';
+/** Messenger's own surface: the chat beside the chat list. */
+export const SURFACE = '[role="main"]';
 const HIDDEN = '[hidden], [aria-hidden="true"], [inert]';
 
 export interface MediaViewerShape {
   rect: ImageRect;
   viewport: ImageRect;
+  /** Over Messenger's surface, or shown in its place. */
   overlay: boolean;
   excluded: boolean;
   hasMedia: boolean;
@@ -33,34 +36,60 @@ function coversViewport(rect: ImageRect, viewport: ImageRect): boolean {
   );
 }
 
-function isVisible(element: Element): boolean {
-  if (element.closest(HIDDEN)) return false;
-  const style = getComputedStyle(element);
+function isRendered(element: Element): boolean {
   const rect = element.getBoundingClientRect();
-  return style.visibility === "visible" && rect.width > 0 && rect.height > 0;
+  return getComputedStyle(element).visibility === "visible" && rect.width > 0 && rect.height > 0;
 }
 
-export function isMediaViewerDialog(dialog: HTMLElement): boolean {
-  if (!isVisible(dialog)) return false;
+function isVisible(element: Element): boolean {
+  return !element.closest(HIDDEN) && isRendered(element);
+}
+
+/**
+ * Where a media viewer can be. Messenger shows one as a dialog, or (encrypted
+ * chats) as a layer with no role of its own, beside its surface, which it
+ * hides meanwhile. The layer stays in the page, empty, once the viewer closes.
+ */
+export function mediaViewerCandidates(surface: Element | null): Set<HTMLElement> {
+  const candidates = new Set(document.querySelectorAll<HTMLElement>(DIALOG));
+  const hidden = surface?.closest(HIDDEN);
+  for (const layer of hidden?.parentElement?.children ?? []) {
+    if (layer !== hidden && layer instanceof HTMLElement) candidates.add(layer);
+  }
+  return candidates;
+}
+
+/** Whether a candidate holds this element itself, not through a dialog inside it. */
+export function ownsViewerElement(viewer: HTMLElement, element: Element): boolean {
+  return (element.closest(DIALOG) ?? viewer) === viewer;
+}
+
+export function isMediaViewer(candidate: HTMLElement, surface: Element | null): boolean {
+  if (!isVisible(candidate)) return false;
   const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
-  const rect = dialog.getBoundingClientRect();
+  const rect = candidate.getBoundingClientRect();
   if (!coversViewport(rect, viewport)) return false;
-  let overlay = dialog.getAttribute("aria-modal") === "true";
-  let excluded = !!dialog.closest("[data-chatpane-shortcuts-overlay]");
-  for (let ancestor: HTMLElement | null = dialog; ancestor; ancestor = ancestor.parentElement) {
+  // In place of the surface: hidden, or never there on a viewer page of its own.
+  let overlay = !(surface && isVisible(surface)) || candidate.getAttribute("aria-modal") === "true";
+  let excluded = !!candidate.closest("[data-chatpane-shortcuts-overlay]");
+  for (let ancestor: HTMLElement | null = candidate; ancestor; ancestor = ancestor.parentElement) {
     const position = getComputedStyle(ancestor).position;
     if (position === "fixed" || position === "absolute") overlay = true;
   }
-  const owns = (element: Element) => element.closest(DIALOG) === dialog;
+  const owns = (element: Element) => ownsViewerElement(candidate, element);
+  // What the candidate shows counts while it is rendered: the encrypted viewer
+  // hides its photo from assistive technology, and all of itself while a
+  // dialog of its own (Forward) is open in its layer.
+  const shows = (element: Element) => owns(element) && isRendered(element);
   // The main Messenger surface contains media and download links too.
-  excluded ||= [...dialog.querySelectorAll('[role="navigation"], [contenteditable="true"]')].some(
-    owns,
-  );
+  excluded ||= [
+    ...candidate.querySelectorAll('[role="navigation"], [contenteditable="true"]'),
+  ].some(owns);
   if (excluded || !overlay) return false;
   const media = [
-    ...dialog.querySelectorAll<HTMLImageElement | HTMLVideoElement>("img, video"),
+    ...candidate.querySelectorAll<HTMLImageElement | HTMLVideoElement>("img, video"),
   ].filter((element) => {
-    if (!owns(element) || !isVisible(element)) return false;
+    if (!shows(element)) return false;
     const bounds = element.getBoundingClientRect();
     const visible = intersectImageClips(intersectImageClips(bounds, rect), viewport);
     const width = (visible.right - visible.left) / Math.min(rect.width, viewport.right);
@@ -79,9 +108,7 @@ export function isMediaViewerDialog(dialog: HTMLElement): boolean {
     overlay,
     excluded,
     hasMedia: media.length > 0,
-    hasDownload: [...dialog.querySelectorAll("a[download]")].some(
-      (element) => owns(element) && isVisible(element),
-    ),
+    hasDownload: [...candidate.querySelectorAll("a[download]")].some(shows),
     hasVideoControls: media.some(
       (element) => element instanceof HTMLVideoElement && element.controls,
     ),

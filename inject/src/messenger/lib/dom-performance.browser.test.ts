@@ -33,7 +33,7 @@ test.skipIf(!chromium)(
       const file = join(directory, "index.html");
       await writeFile(
         file,
-        `<!doctype html><html><body><main id="chat"></main><pre id="result">RUNNING</pre>
+        `<!doctype html><html><body><main role="main"><div id="chat"></div></main><pre id="result">RUNNING</pre>
           <script>
           window.requestAnimationFrame = callback => setTimeout(() => callback(performance.now()), 16);
           ${bundle.outputFiles[0]!.text}
