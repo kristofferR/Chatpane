@@ -1,4 +1,10 @@
-import { isMediaViewerDialog, MEDIA_VIEWER_ATTR } from "../lib/media-viewer";
+import {
+  isMediaViewer,
+  MEDIA_VIEWER_ATTR,
+  mediaViewerCandidates,
+  ownsViewerElement,
+  SURFACE,
+} from "../lib/media-viewer";
 import { viewerControlOffset } from "../lib/viewer-controls";
 import { reportMediaViewer, windowControlsInset } from "./title-bar";
 
@@ -36,11 +42,11 @@ const applyOffset = (element: HTMLElement, controlTops: number[], attr: string) 
   return true;
 };
 
-const actionGroupFor = (download: HTMLElement, dialog: HTMLElement) => {
+const actionGroupFor = (download: HTMLElement, viewer: HTMLElement) => {
   let candidate: HTMLElement = download;
   for (
     let parent = download.parentElement;
-    parent && parent !== dialog;
+    parent && parent !== viewer;
     parent = parent.parentElement
   ) {
     const rect = parent.getBoundingClientRect();
@@ -55,24 +61,28 @@ export function initViewerControls() {
   let frame = 0;
   let viewers = new Set<HTMLElement>();
   let markedControls = new Set<HTMLElement>();
-  let observedDialogs = new Set<HTMLElement>();
+  let candidates = new Set<HTMLElement>();
+  let surface: Element | null = null;
 
   const refresh = () => {
     frame = 0;
-    const dialogs = new Set(document.querySelectorAll<HTMLElement>(DIALOG));
-    for (const dialog of observedDialogs) {
-      if (!dialogs.has(dialog)) resizeObserver.unobserve(dialog);
+    surface = document.querySelector(SURFACE);
+    const nextCandidates = mediaViewerCandidates(surface);
+    for (const candidate of candidates) {
+      if (!nextCandidates.has(candidate)) resizeObserver.unobserve(candidate);
     }
-    for (const dialog of dialogs) {
-      if (!observedDialogs.has(dialog)) resizeObserver.observe(dialog);
+    for (const candidate of nextCandidates) {
+      if (!candidates.has(candidate)) resizeObserver.observe(candidate);
     }
-    observedDialogs = dialogs;
-    const nextViewers = new Set([...dialogs].filter(isMediaViewerDialog));
-    for (const dialog of viewers) {
-      if (!nextViewers.has(dialog)) dialog.removeAttribute(MEDIA_VIEWER_ATTR);
+    candidates = nextCandidates;
+    const nextViewers = new Set(
+      [...candidates].filter((candidate) => isMediaViewer(candidate, surface)),
+    );
+    for (const viewer of viewers) {
+      if (!nextViewers.has(viewer)) viewer.removeAttribute(MEDIA_VIEWER_ATTR);
     }
-    for (const dialog of nextViewers) {
-      if (!dialog.hasAttribute(MEDIA_VIEWER_ATTR)) dialog.setAttribute(MEDIA_VIEWER_ATTR, "");
+    for (const viewer of nextViewers) {
+      if (!viewer.hasAttribute(MEDIA_VIEWER_ATTR)) viewer.setAttribute(MEDIA_VIEWER_ATTR, "");
     }
     viewers = nextViewers;
     reportMediaViewer(viewers.size > 0);
@@ -92,14 +102,15 @@ export function initViewerControls() {
         }
       }
 
-      // Facebook renders Download and Share in a compact action group inside
-      // the dialog rather than in the banner. Find that group structurally
-      // from the locale-independent `download` attribute and move it as one
-      // unit, preserving spacing and hover transforms on both controls.
-      for (const dialog of viewers) {
-        for (const download of dialog.querySelectorAll<HTMLElement>("a[download]")) {
-          if (download.closest(DIALOG) !== dialog) continue;
-          const group = actionGroupFor(download, dialog);
+      // Facebook renders Download and Share (and, in an encrypted chat, Close)
+      // in a compact action group inside the viewer rather than in the banner.
+      // Find that group structurally from the locale-independent `download`
+      // attribute and move it as one unit, preserving spacing and hover
+      // transforms on its controls.
+      for (const viewer of viewers) {
+        for (const download of viewer.querySelectorAll<HTMLElement>("a[download]")) {
+          if (!ownsViewerElement(viewer, download)) continue;
+          const group = actionGroupFor(download, viewer);
           if (
             applyOffset(
               group,
@@ -126,12 +137,18 @@ export function initViewerControls() {
   };
 
   const resizeObserver = new ResizeObserver(schedule);
+  // A surface, inside a dialog, banner or viewer layer, or around something
+  // tracked. The surface counts as tracked: hiding it, or adding a layer beside
+  // it, is how a viewer that is no dialog arrives and leaves.
   const affectsControls = (element: Element) =>
+    element.matches(SURFACE) ||
     !!element.closest(`${DIALOG}, ${BANNER}`) ||
-    [...observedDialogs, ...markedControls].some((control) => element.contains(control));
+    [...candidates].some((candidate) => candidate.contains(element)) ||
+    [...candidates, ...markedControls, surface].some((tracked) => element.contains(tracked));
 
-  // Chat updates outside a dialog cannot change its controls. Inspect changed
-  // subtrees for new dialogs, and retain tracked nodes to catch removal or role loss.
+  // Chat updates inside the surface cannot change a viewer's controls. Inspect
+  // changed subtrees for new dialogs or a new surface, and retain tracked nodes
+  // to catch removal or role loss.
   new MutationObserver((records) => {
     if (
       records.some(
@@ -141,7 +158,7 @@ export function initViewerControls() {
             [...record.addedNodes, ...record.removedNodes].some(
               (node) =>
                 node instanceof Element &&
-                (affectsControls(node) || node.querySelector(`${DIALOG}, ${BANNER}`)),
+                (affectsControls(node) || node.querySelector(`${DIALOG}, ${BANNER}, ${SURFACE}`)),
             )),
       )
     )
@@ -163,7 +180,7 @@ export function initViewerControls() {
     ],
   });
   const mediaLoaded = (event: Event) => {
-    if (event.target instanceof Element && event.target.closest(DIALOG)) schedule();
+    if (event.target instanceof Element && affectsControls(event.target)) schedule();
   };
   document.addEventListener("load", mediaLoaded, true);
   document.addEventListener("loadedmetadata", mediaLoaded, true);

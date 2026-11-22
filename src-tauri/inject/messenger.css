@@ -8,7 +8,9 @@
  * The tricky bit: Facebook reuses div[role="banner"] both for the top site
  * navigation AND, when a photo/video media viewer dialog is open, for that
  * viewer's control bar. So we hide the banner normally, but restore it while a
- * media dialog is open.
+ * media dialog is open. The viewer of an encrypted chat is no dialog: it has
+ * its controls in itself and leaves the header alone (messenger.js marks both
+ * kinds with data-chatpane-media-viewer).
  */
 
 /* Kill the logged-in app scrollbar the hidden header would otherwise leave
@@ -120,6 +122,14 @@ html[data-chatpane-title-bar="windows"] #chatpane-window-controls button {
   font-weight: normal;
   line-height: 1;
 }
+/* The media viewer is dark in either theme; a dialog over it (Forward) dims it
+   in the theme's own colour again. */
+html[data-chatpane-title-bar="windows"]:has(body [data-chatpane-media-viewer]):not(
+    :has(body [role="dialog"][aria-modal="true"]:not([data-chatpane-media-viewer]))
+  )
+  #chatpane-window-controls {
+  color: #fff;
+}
 html[data-chatpane-title-bar="windows"] #chatpane-window-controls button:hover {
   background: rgba(127, 127, 127, 0.18);
 }
@@ -142,22 +152,25 @@ html[data-chatpane-title-bar="linux"] #chatpane-window-controls button:hover {
   filter: brightness(1.1);
 }
 
-body:not(:has([data-chatpane-media-viewer])) div[role="banner"] {
+body:not(:has([role="dialog"][data-chatpane-media-viewer])) div[role="banner"] {
   display: none !important;
 }
 
-/* Media viewer open: bring back a slim header so its controls are reachable. */
-:root:has(body [data-chatpane-media-viewer]),
-:root.__fb-light-mode:has(body [data-chatpane-media-viewer]),
-:root.__fb-dark-mode:has(body [data-chatpane-media-viewer]) {
+/* Media viewer dialog open: bring back a slim header so its controls are
+   reachable. Not for the encrypted viewer, which Messenger's surface stays
+   laid out under: a header would move that, visibly so as the viewer closes. */
+:root:has(body [role="dialog"][data-chatpane-media-viewer]),
+:root.__fb-light-mode:has(body [role="dialog"][data-chatpane-media-viewer]),
+:root.__fb-dark-mode:has(body [role="dialog"][data-chatpane-media-viewer]) {
   --header-height: 56px !important;
 }
 
 /* Facebook independently positions the media viewer's close and action
    controls, and either group can end up partly above the WebView on different
-   platforms/window sizes. messenger.js measures the visible controls and
-   supplies only the downward offset needed to retain an 8px safe inset. Use
-   the individual translate property so Facebook's own transforms survive. */
+   platforms/window sizes, or under Chatpane's window controls. messenger.js
+   measures the visible controls and supplies only the downward offset needed
+   to retain an 8px safe inset below those. Use the individual translate
+   property so Facebook's own transforms survive. */
 body:has([data-chatpane-media-viewer])
   :is(
     div[role="banner"][data-chatpane-media-controls],
@@ -219,8 +232,9 @@ div[role="banner"] div[role="navigation"] {
   pointer-events: none;
 }
 
-/* Remove the bright focus ring inside the media viewer. */
-[data-chatpane-media-viewer] {
+/* Remove the bright focus ring inside the media viewer dialog. The encrypted
+   viewer's layer also holds its Forward dialog, which keeps its ring. */
+[role="dialog"][data-chatpane-media-viewer] {
   --focus-ring-shadow-default: none !important;
 }
 

@@ -22,7 +22,9 @@ test.skipIf(!chromium).each([480, 1000, 1600])(
       const entry = fileURLToPath(new URL("../features/viewer-controls.ts", import.meta.url));
       const bundle = await build({
         stdin: {
-          contents: `import { initViewerControls } from ${JSON.stringify(entry)}; initViewerControls();`,
+          contents: `import { initTitleBar } from "../features/title-bar";
+            import { initViewerControls } from ${JSON.stringify(entry)};
+            initTitleBar(); initViewerControls();`,
           resolveDir: import.meta.dir,
         },
         bundle: true,
@@ -34,6 +36,7 @@ test.skipIf(!chromium).each([480, 1000, 1600])(
       );
       const html = `<!doctype html><html><head><style>${css}</style><style>
         html,body{margin:0;height:100%} .viewer{position:fixed;inset:0}
+        .page{position:relative;height:100vh}
         .media{position:absolute;top:20%;left:20%;width:60%;height:60%}
         .actions{position:absolute;top:-16px;right:20px;display:flex}
         a,button{display:inline-block;width:40px;height:40px}
@@ -42,7 +45,11 @@ test.skipIf(!chromium).each([480, 1000, 1600])(
         <main id="fixtures"></main><pre id="result">RUNNING</pre><script>
         // --virtual-time-budget advances timers, but not animation frames.
         window.requestAnimationFrame = callback => setTimeout(() => callback(performance.now()), 16);
+        window.__CHATPANE_TITLE_BAR__ = ${JSON.stringify(titleBar(0))};
+        // On a Mac the viewer is reported to the native side.
+        window.chatpaneMediaViewer = () => undefined;
         ${bundle.outputFiles[0]!.text}
+        const titleBar = ${titleBar.toString()};
         (${runFixtures.toString()})();</script></body></html>`;
       const file = join(directory, "index.html");
       await writeFile(file, html);
@@ -74,6 +81,17 @@ test.skipIf(!chromium).each([480, 1000, 1600])(
   },
   60_000,
 );
+
+/** The strip's state as the native side sends it: none, or Windows' with its controls. */
+function titleBar(inset: number) {
+  return {
+    inset,
+    controls: inset ? ("windows" as const) : null,
+    minimize: true,
+    maximize: true,
+    maximized: false,
+  };
+}
 
 async function runFixtures() {
   const host = document.getElementById("fixtures")!;
@@ -205,6 +223,56 @@ async function runFixtures() {
       dialog.remove();
       await settle();
     }
+    // Encrypted chats: the viewer is a layer with no role, beside the surface
+    // Messenger hides meanwhile. The layer stays, empty, once the viewer closes.
+    const app = document.createElement("div");
+    app.innerHTML =
+      '<div style="position:fixed;inset:0"><div role="main" style="height:100%"></div></div><div></div>';
+    host.append(app);
+    const base = app.firstElementChild as HTMLElement;
+    const layer = app.lastElementChild as HTMLElement;
+    layer.innerHTML = `<div class="page"><img class="media"><div class="actions">
+      <a download href="#">Save</a><button>Share</button><button>Close</button></div></div>`;
+    await settle();
+    assert("layer beside a visible surface", !marked(layer));
+    base.setAttribute("aria-hidden", "true");
+    await settle();
+    assert("encrypted viewer layer", marked(layer) && header() === "0px");
+    // Windows: Chatpane's own window controls have the top right corner.
+    window.__chatpaneTitleBar!(titleBar(32));
+    await settle();
+    assert(
+      "layer controls below the window controls",
+      [...layer.querySelectorAll(".actions > *")].every(
+        (control) => control.getBoundingClientRect().top >= 39.9,
+      ),
+    );
+    window.__chatpaneTitleBar!(titleBar(0));
+    // Forward opens as a dialog in the viewer's layer, which hides the viewer beside it.
+    const forward = document.createElement("div");
+    forward.setAttribute("role", "dialog");
+    forward.style.cssText = "position:fixed;top:30%;left:30%;width:40%;height:40%";
+    layer.firstElementChild!.setAttribute("aria-hidden", "true");
+    layer.append(forward);
+    await settle();
+    assert("viewer under its own dialog", marked(layer) && !marked(forward));
+    forward.remove();
+    base.removeAttribute("aria-hidden");
+    layer.replaceChildren();
+    await settle();
+    assert("closed viewer layer", !marked(layer));
+    // Unencrypted chats: the viewer is a page of its own, a dialog in the flow
+    // in place of the surface.
+    base.hidden = true;
+    dialog = make();
+    dialog.style.cssText = "position:relative;inset:auto;height:100vh";
+    await settle();
+    assert("viewer page", marked(dialog) && header() === "56px");
+    base.hidden = false;
+    await settle();
+    assert("dialog in the flow beside a visible surface", !marked(dialog));
+    app.remove();
+    dialog.remove();
     result.textContent = "PASS";
   } catch (error) {
     result.textContent = String(error);
